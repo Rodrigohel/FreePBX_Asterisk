@@ -26,24 +26,73 @@ instalado**:
 - o backend roda como processo Node próprio (porta configurável, padrão
   `3001`), separado da interface administrativa do FreePBX;
 - o frontend é build estático (`frontend/dist` após `npm run build`) e pode
-  ser servido pelo Nginx/Apache que já roda no servidor, com um `location`
-  fazendo proxy para o backend.
+  ser servido pelo Nginx/Apache que já roda no servidor.
 
 Hospedagem externa só seria necessária se você quisesse expor o painel
 publicamente fora da rede do PBX — não é um requisito da solução.
 
-## Requisitos
+## Login é obrigatório?
 
-- Node.js 18+
-- Acesso ao AMI do Asterisk (usuário/senha configurados em `manager.conf` /
-  interface do FreePBX)
-- Acesso de leitura ao banco `asteriskcdrdb` (e opcionalmente `asterisk`,
-  para nomes de ramal)
+Sim, por padrão. O handoff original pediu autenticação antes de expor o
+painel publicamente, então toda rota `/api/*` exige um token (login com
+usuário/senha). O primeiro usuário é criado manualmente com
+`npm run seed:user` (veja o passo a passo abaixo) — não existe usuário
+padrão pré-cadastrado por segurança.
 
-## Configuração do AMI no FreePBX
+## Personalização (nome da empresa, ramal, usuário exibido)
 
-Em **Settings → Asterisk Manager Users** (ou `/etc/asterisk/manager.conf`),
-crie um usuário somente leitura para o dashboard, por exemplo:
+| O que mudar | Onde | Como aplicar |
+|---|---|---|
+| Nome da empresa (ex.: "Acme Distribuidora") | `frontend/.env` → `VITE_COMPANY_NAME` | editar e rodar `npm run build` de novo |
+| Nome do PBX (ex.: "PBX Matriz") | `frontend/.env` → `VITE_PBX_NAME` | editar e rodar `npm run build` de novo |
+| Nome exibido do usuário logado (ex.: "Renata M.") e as iniciais do avatar | não é fixo — é o nome de quem faz login | definido/alterado com `npm run seed:user` (pergunta "Nome de exibição"), rodando de novo com o mesmo usuário para atualizar |
+| Usuário/senha de login | tabela `users` (SQLite) | `npm run seed:user` cria ou atualiza a senha de um usuário |
+
+**Importante:** como o frontend é buildado como arquivos estáticos, qualquer
+mudança em `frontend/.env` só aparece depois de rodar `npm run build`
+novamente (e, se estiver usando Nginx, não precisa reiniciar nada — os
+arquivos novos já substituem os antigos na pasta `dist`).
+
+## Instalação no Debian — passo a passo (do zero)
+
+Estes passos assumem um servidor Debian que **já tem o FreePBX/Asterisk
+instalado e funcionando**, e que você tem acesso root/sudo via SSH.
+
+### 1. Instalar o Node.js 20 (LTS)
+
+O Node.js que vem no repositório padrão do Debian costuma ser antigo demais.
+Use o repositório oficial da NodeSource:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v   # deve mostrar v20.x
+```
+
+### 2. Copiar o projeto para o servidor
+
+Se o código está num repositório Git:
+
+```bash
+sudo mkdir -p /opt/pbx-dashboard
+sudo chown $USER:$USER /opt/pbx-dashboard
+git clone <URL-DO-SEU-REPOSITORIO> /opt/pbx-dashboard
+cd /opt/pbx-dashboard
+```
+
+Se preferir copiar direto da sua máquina (sem Git no servidor), rode isto
+**no seu computador**, apontando para a pasta do projeto:
+
+```bash
+rsync -avz --exclude node_modules --exclude dist ./ usuario@ip-do-servidor:/opt/pbx-dashboard/
+```
+
+### 3. Criar o usuário AMI no FreePBX
+
+No painel do FreePBX: **Settings → Asterisk Manager Users** → adicionar um
+usuário novo (ex.: `dashboard`), com uma senha forte e permissões de leitura
+(`read = system,call,agent,user`, sem `write`). Ou edite diretamente
+`/etc/asterisk/manager.conf`:
 
 ```ini
 [dashboard]
@@ -54,71 +103,46 @@ read = system,call,agent,user
 write =
 ```
 
-## Backend
+Depois recarregue: `asterisk -rx "manager reload"`.
+
+### 4. Configurar e subir o backend
 
 ```bash
-cd backend
+cd /opt/pbx-dashboard/backend
 npm install
-cp .env.example .env   # edite AMI_*, CDR_*, JWT_SECRET etc.
-npm run seed:user      # cria o primeiro usuário do painel (login interativo)
-npm start               # ou: npm run dev (com --watch)
+cp .env.example .env
+nano .env   # preencha AMI_USER/AMI_PASSWORD, CDR_USER/CDR_PASSWORD, JWT_SECRET, etc.
+npm run seed:user   # cria o usuário do painel (pede login, nome de exibição e senha)
+npm start            # testa manualmente — Ctrl+C para parar depois de confirmar que funciona
 ```
 
-O backend sobe em `http://localhost:3001` (padrão) com:
+Confirme que respondeu algo em `http://IP-DO-SERVIDOR:3001/health`.
 
-- `GET /health` — healthcheck simples, sem autenticação.
-- `POST /api/auth/login` — autenticação (usuário/senha → JWT).
-- `GET /api/status`, `/api/extensions`, `/api/extensions/summary`,
-  `/api/calls/active`, `/api/calls/summary?range=today|7d|30d`,
-  `/api/calls/today-summary`, `/api/alerts`, `/api/server/health` —
-  protegidos por `Authorization: Bearer <token>`.
-- WebSocket em `/ws` — push de `calls:active` e `extensions` a cada 5s,
-  para atualização em tempo real sem esperar o polling do frontend.
-
-**Modo mock:** se o AMI ou o CDR estiverem indisponíveis (ou com
-`FORCE_MOCK=true` no `.env`), cada endpoint cai automaticamente para dados
-simulados no mesmo formato dos dados reais — útil para desenvolver o
-frontend sem um PBX real à mão. O topo do dashboard indica quando os dados
-são simulados.
-
-### Ajustes que podem ser necessários no seu ambiente
-
-- `backend/src/services/extensionsService.js` — a query de nome amigável do
-  ramal assume uma tabela `users(extension, name)` no banco `asterisk`;
-  ajuste ao schema real da sua instalação (varia entre versões do FreePBX).
-- `backend/src/services/callsService.js` — a classificação
-  recebida/realizada usa `dcontext LIKE 'from-internal%'`; se seu dialplan
-  usa contextos customizados, ajuste os `WHERE`.
-- `backend/src/services/alertsService.js` — limites de alerta (ramal
-  offline, disco cheio) são configuráveis via `.env`
-  (`ALERT_EXTENSION_OFFLINE_MINUTES`, `ALERT_DISK_USAGE_PERCENT`).
-
-## Frontend
+### 5. Configurar e buildar o frontend
 
 ```bash
-cd frontend
+cd /opt/pbx-dashboard/frontend
 npm install
-cp .env.example .env    # aponte VITE_API_URL para o backend
-npm run dev              # desenvolvimento, http://localhost:5173
-npm run build             # gera frontend/dist para produção
+cp .env.example .env
+nano .env
+# VITE_API_URL=http://IP-DO-SERVIDOR:3001   (ou o domínio/proxy que for usar)
+# VITE_WS_URL=ws://IP-DO-SERVIDOR:3001/ws
+# VITE_COMPANY_NAME=Nome da sua empresa
+# VITE_PBX_NAME=Nome do seu PBX
+npm run build
 ```
 
-Em produção, sirva `frontend/dist` como arquivos estáticos (Nginx/Apache) e
-configure um proxy reverso de `/api` e `/ws` para o backend, ou aponte
-`VITE_API_URL`/`VITE_WS_URL` diretamente para o host:porta do backend antes
-do build.
+Isso gera os arquivos estáticos em `frontend/dist`.
 
-## Autenticação
+### 6. Deixar o backend rodando sempre (systemd)
 
-O primeiro usuário do painel é criado com `npm run seed:user` (pede
-usuário, nome de exibição e senha). Rode novamente para criar mais usuários
-ou redefinir uma senha. As senhas são armazenadas com hash bcrypt em SQLite
-(`backend/data/dashboard.db`, criado automaticamente).
+Crie o serviço:
 
-## Deploy sugerido (systemd + Nginx, no mesmo Debian do FreePBX)
+```bash
+sudo nano /etc/systemd/system/pbx-dashboard-backend.service
+```
 
 ```ini
-# /etc/systemd/system/pbx-dashboard-backend.service
 [Unit]
 Description=Dashboard PBX - backend
 After=network.target asterisk.service
@@ -133,6 +157,19 @@ User=asterisk
 [Install]
 WantedBy=multi-user.target
 ```
+
+Ative e inicie:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now pbx-dashboard-backend
+sudo systemctl status pbx-dashboard-backend
+```
+
+### 7. Servir o frontend pelo Nginx que já roda no servidor
+
+Adicione ao seu arquivo de configuração do Nginx (dentro de um bloco
+`server { ... }` já existente, ou crie um novo site):
 
 ```nginx
 location /pbx-dashboard/ {
@@ -151,4 +188,63 @@ location /pbx-dashboard/ws {
 }
 ```
 
-(Ajuste os caminhos base do Vite/roteamento se servir fora da raiz `/`.)
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Acesse `http://IP-OU-DOMINIO-DO-SERVIDOR/pbx-dashboard/` no navegador — deve
+aparecer a tela de login.
+
+> Se preferir servir na raiz do domínio (sem o prefixo `/pbx-dashboard/`),
+> ajuste os `location` acima para `/`, `/api/` e `/ws`, e refaça o build do
+> frontend com `VITE_API_URL`/`VITE_WS_URL` apontando para esse domínio.
+
+## Endpoints do backend
+
+O backend sobe em `http://localhost:3001` (padrão) com:
+
+- `GET /health` — healthcheck simples, sem autenticação.
+- `POST /api/auth/login` — autenticação (usuário/senha → JWT).
+- `GET /api/status`, `/api/extensions`, `/api/extensions/summary`,
+  `/api/calls/active`, `/api/calls/summary?range=today|7d|30d`,
+  `/api/calls/today-summary`, `/api/alerts`, `/api/server/health` —
+  protegidos por `Authorization: Bearer <token>`.
+- WebSocket em `/ws` — push de `calls:active` e `extensions` a cada 5s,
+  para atualização em tempo real sem esperar o polling do frontend.
+
+**Modo mock:** se o AMI ou o CDR estiverem indisponíveis (ou com
+`FORCE_MOCK=true` no `.env`), cada endpoint cai automaticamente para dados
+simulados no mesmo formato dos dados reais — útil para desenvolver o
+frontend sem um PBX real à mão. O topo do dashboard indica quando os dados
+são simulados.
+
+## Ajustes que podem ser necessários no seu ambiente
+
+- `backend/src/services/extensionsService.js` — a query de nome amigável do
+  ramal assume uma tabela `users(extension, name)` no banco `asterisk`;
+  ajuste ao schema real da sua instalação (varia entre versões do FreePBX).
+- `backend/src/services/callsService.js` — a classificação
+  recebida/realizada usa `dcontext LIKE 'from-internal%'`; se seu dialplan
+  usa contextos customizados, ajuste os `WHERE`.
+- `backend/src/services/alertsService.js` — limites de alerta (ramal
+  offline, disco cheio) são configuráveis via `.env`
+  (`ALERT_EXTENSION_OFFLINE_MINUTES`, `ALERT_DISK_USAGE_PERCENT`).
+
+## Desenvolvimento local (sem Debian/produção)
+
+```bash
+# backend
+cd backend && npm install && cp .env.example .env && npm run seed:user && npm run dev
+
+# frontend, em outro terminal
+cd frontend && npm install && cp .env.example .env && npm run dev
+```
+
+Acesse `http://localhost:5173`.
+
+## Autenticação — detalhes
+
+O primeiro usuário do painel é criado com `npm run seed:user` (pede
+usuário, nome de exibição e senha). Rode novamente para criar mais usuários
+ou redefinir a senha/nome de um já existente. As senhas são armazenadas com
+hash bcrypt em SQLite (`backend/data/dashboard.db`, criado automaticamente).
