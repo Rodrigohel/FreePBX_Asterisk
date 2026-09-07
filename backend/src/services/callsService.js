@@ -1,0 +1,145 @@
+import { amiClient } from '../ami/amiClient.js';
+import { getCdrPool } from './cdrClient.js';
+import { config } from '../config.js';
+import { mockActiveCalls, mockCallsSummary, mockTodaySummary } from './mockData.js';
+
+function stateFromChannelState(channelStateDesc) {
+  const s = (channelStateDesc || '').toLowerCase();
+  if (s.includes('ring')) return 'ringing';
+  if (s.includes('up')) return 'in_progress';
+  return 'in_progress';
+}
+
+function extNumberFromChannel(channel) {
+  // Ex.: "PJSIP/1002-0000001a" -> "1002"
+  const match = /^[A-Za-z]+\/(\d+)-/.exec(channel || '');
+  return match ? match[1] : null;
+}
+
+export async function getActiveCalls() {
+  if (config.forceMock || !amiClient.isConnected()) {
+    return { data: mockActiveCalls(), source: 'mock' };
+  }
+
+  try {
+    const { events } = await amiClient.action({ Action: 'CoreShowChannels' }, 'CoreShowChannel');
+
+    const calls = events
+      .filter((evt) => extNumberFromChannel(evt.channel))
+      .map((evt) => {
+        const ext = extNumberFromChannel(evt.channel);
+        const durationSeconds = Number(evt.duration) || 0;
+        const state = stateFromChannelState(evt.channelstatedesc);
+        const direction = evt.context && evt.context.startsWith('from-') ? 'inbound' : 'outbound';
+        return {
+          ext,
+          name: evt.calleridname && evt.calleridname !== '<unknown>' ? evt.calleridname : `Ramal ${ext}`,
+          destination: evt.connectedlinenum || evt.exten || '—',
+          direction,
+          state,
+          durationSeconds,
+        };
+      });
+
+    return { data: calls, source: 'ami' };
+  } catch (err) {
+    return { data: mockActiveCalls(), source: 'mock', error: err.message };
+  }
+}
+
+const RANGE_TO_SQL = {
+  today: {
+    where: 'calldate >= CURDATE()',
+    // agrupa por hora
+    groupExpr: "DATE_FORMAT(calldate, '%H:00')",
+    labelFormatter: (v) => v.replace(':00', 'h'),
+  },
+  '7d': {
+    where: 'calldate >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)',
+    groupExpr: "DATE(calldate)",
+    labelFormatter: (v) => new Date(v).toLocaleDateString('pt-BR', { weekday: 'short' }),
+  },
+  '30d': {
+    where: 'calldate >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)',
+    groupExpr: "YEARWEEK(calldate, 3)",
+    labelFormatter: (v, i) => `Sem ${i + 1}`,
+  },
+};
+
+export async function getCallsSummary(range) {
+  const cfg = RANGE_TO_SQL[range] || RANGE_TO_SQL.today;
+
+  if (config.forceMock) {
+    return { ...mockCallsSummary(range), source: 'mock' };
+  }
+
+  try {
+    const pool = await getCdrPool();
+    // dcontext 'from-internal' = originada internamente (realizada);
+    // demais contextos 'from-trunk'/'from-pstn' etc = recebida externamente.
+    const [rows] = await pool.query(
+      `SELECT ${cfg.groupExpr} AS bucket,
+              SUM(CASE WHEN dcontext NOT LIKE 'from-internal%' THEN 1 ELSE 0 END) AS recebidas,
+              SUM(CASE WHEN dcontext LIKE 'from-internal%' THEN 1 ELSE 0 END) AS realizadas,
+              SUM(CASE WHEN disposition = 'NO ANSWER' THEN 1 ELSE 0 END) AS perdidas,
+              SUM(CASE WHEN disposition = 'FAILED' THEN 1 ELSE 0 END) AS falhas
+       FROM cdr
+       WHERE ${cfg.where}
+       GROUP BY bucket
+       ORDER BY bucket ASC`
+    );
+
+    const categories = rows.map((r, i) => cfg.labelFormatter(String(r.bucket), i));
+    const recebidas = rows.map((r) => Number(r.recebidas));
+    const realizadas = rows.map((r) => Number(r.realizadas));
+    const perdidas = rows.map((r) => Number(r.perdidas));
+    const falhas = rows.map((r) => Number(r.falhas));
+
+    return { categories, recebidas, realizadas, perdidas, falhas, source: 'cdr' };
+  } catch (err) {
+    return { ...mockCallsSummary(range), source: 'mock', error: err.message };
+  }
+}
+
+export async function getTodaySummary() {
+  if (config.forceMock) {
+    return { ...mockTodaySummary(), source: 'mock' };
+  }
+
+  try {
+    const pool = await getCdrPool();
+    const [[totals]] = await pool.query(
+      `SELECT
+         SUM(CASE WHEN dcontext NOT LIKE 'from-internal%' THEN 1 ELSE 0 END) AS received,
+         SUM(CASE WHEN dcontext LIKE 'from-internal%' THEN 1 ELSE 0 END) AS made,
+         SUM(CASE WHEN disposition = 'NO ANSWER' THEN 1 ELSE 0 END) AS missed,
+         SUM(CASE WHEN disposition = 'FAILED' THEN 1 ELSE 0 END) AS failed,
+         AVG(NULLIF(billsec, 0)) AS avgDuration,
+         SUM(billsec) AS totalDuration
+       FROM cdr
+       WHERE calldate >= CURDATE()`
+    );
+
+    const [mostUsedRows] = await pool.query(
+      `SELECT src AS extension, COUNT(*) AS total
+       FROM cdr
+       WHERE calldate >= CURDATE() AND dcontext LIKE 'from-internal%'
+       GROUP BY src
+       ORDER BY total DESC
+       LIMIT 1`
+    );
+
+    return {
+      received: Number(totals.received) || 0,
+      made: Number(totals.made) || 0,
+      missed: Number(totals.missed) || 0,
+      failed: Number(totals.failed) || 0,
+      avgDurationSeconds: Math.round(Number(totals.avgDuration) || 0),
+      totalDurationSeconds: Number(totals.totalDuration) || 0,
+      mostUsedExtension: mostUsedRows[0]?.extension || null,
+      source: 'cdr',
+    };
+  } catch (err) {
+    return { ...mockTodaySummary(), source: 'mock', error: err.message };
+  }
+}

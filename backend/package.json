@@ -1,0 +1,27 @@
+{
+  "name": "freepbx-dashboard-backend",
+  "version": "1.0.0",
+  "description": "Backend REST/WebSocket que expõe dados reais do FreePBX/Asterisk (AMI + CDR) para o Dashboard.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed:user": "node src/db/seedUser.js"
+  },
+  "dependencies": {
+    "asterisk-manager": "^0.2.0",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.0",
+    "systeminformation": "^5.23.5",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

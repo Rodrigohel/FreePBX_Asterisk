@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard PBX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; -webkit-font-smoothing:antialiased; }
+    * { box-sizing:border-box; }
+    a { color:#2563EB; text-decoration:none; }
+    a:hover { color:#1D4ED8; text-decoration:underline; }
+    @keyframes pulseDot { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+    @keyframes spinIcon { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+    @keyframes popIn { from{opacity:0;transform:scale(.9);} to{opacity:1;transform:scale(1);} }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
