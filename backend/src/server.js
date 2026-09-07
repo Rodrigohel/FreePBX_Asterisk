@@ -6,6 +6,7 @@ import { config } from './config.js';
 import { amiClient } from './ami/amiClient.js';
 import { authRouter } from './routes/auth.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { publicRouter } from './routes/public.js';
 import { requireAuth } from './middleware/auth.js';
 import { runAlertChecks } from './services/alertsService.js';
 import { getActiveCalls } from './services/callsService.js';
@@ -19,6 +20,9 @@ app.use(express.json());
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 app.use('/api/auth', authRouter);
+// Rota pública (sem autenticação) precisa vir ANTES do requireAuth abaixo,
+// que protege todo o restante de /api.
+app.use('/api/public', publicRouter);
 app.use('/api', requireAuth, dashboardRouter);
 
 const server = http.createServer(app);

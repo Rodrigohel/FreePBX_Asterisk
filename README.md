@@ -33,11 +33,13 @@ publicamente fora da rede do PBX — não é um requisito da solução.
 
 ## Login é obrigatório?
 
-Sim, por padrão. O handoff original pediu autenticação antes de expor o
-painel publicamente, então toda rota `/api/*` exige um token (login com
-usuário/senha). O primeiro usuário é criado manualmente com
-`npm run seed:user` (veja o passo a passo abaixo) — não existe usuário
-padrão pré-cadastrado por segurança.
+Só para ver o **painel completo**. A página abre num painel público (você
+escolhe quais cards aparecem ali — veja "Painel público" abaixo); para ver
+tudo (ramais com nome, chamadas com número de destino, alertas, saúde do
+servidor) é preciso logar, clicando em "Entrar" no canto superior. O
+primeiro usuário é criado manualmente com `npm run seed:user` (veja o
+passo a passo abaixo) — não existe usuário padrão pré-cadastrado por
+segurança.
 
 ## Personalização (nome da empresa, ramal, usuário exibido)
 
@@ -47,11 +49,55 @@ padrão pré-cadastrado por segurança.
 | Nome do PBX (ex.: "PBX Matriz") | `frontend/.env` → `VITE_PBX_NAME` | editar e rodar `npm run build` de novo |
 | Nome exibido do usuário logado (ex.: "Renata M.") e as iniciais do avatar | não é fixo — é o nome de quem faz login | definido/alterado com `npm run seed:user` (pergunta "Nome de exibição"), rodando de novo com o mesmo usuário para atualizar |
 | Usuário/senha de login | tabela `users` (SQLite) | `npm run seed:user` cria ou atualiza a senha de um usuário |
+| Logo da empresa (ícone padrão → sua marca) | `frontend/public/logo.png` + `frontend/.env` → `VITE_LOGO_URL` | ver seção "Logo da empresa" abaixo |
+| Quais cards aparecem no painel público (sem login) | `backend/.env` → `PUBLIC_SHOW_*` | ver seção "Painel público" abaixo — só reiniciar o backend |
 
 **Importante:** como o frontend é buildado como arquivos estáticos, qualquer
 mudança em `frontend/.env` só aparece depois de rodar `npm run build`
 novamente (e, se estiver usando Nginx, não precisa reiniciar nada — os
 arquivos novos já substituem os antigos na pasta `dist`).
+
+## Painel público (sem login)
+
+A página abre, por padrão, num **painel público**: qualquer visitante vê um
+subconjunto de cards sem precisar de senha, com um botão **"Entrar"** no
+canto superior direito que abre o login em um pop-up — depois de logar, a
+mesma página vira o painel completo (com "Sair" no lugar de "Entrar").
+
+Você decide **quais cards ficam públicos** editando `backend/.env` (não
+precisa mexer em código nem no frontend) — cada card tem sua própria chave
+`PUBLIC_SHOW_*`, `true` ou `false`:
+
+```bash
+PUBLIC_DASHBOARD_ENABLED=true   # false = a página só mostra a tela de login
+
+PUBLIC_SHOW_STATUS=true              # selo "Operacional/Degradado"
+PUBLIC_SHOW_HERO_BANNER=true         # banner de resumo do topo
+PUBLIC_SHOW_EXTENSIONS_SUMMARY=true  # contadores: configurados/online/offline
+PUBLIC_SHOW_ACTIVE_CALLS_COUNT=true  # só a quantidade de chamadas ativas
+PUBLIC_SHOW_ACTIVITY_CHART=true      # gráfico de atividade telefônica
+PUBLIC_SHOW_TODAY_SUMMARY=false      # resumo de chamadas de hoje
+
+# Estes revelam informação mais sensível — avalie antes de ligar:
+PUBLIC_SHOW_EXTENSIONS_LIST=false    # nomes de cada ramal
+PUBLIC_SHOW_ACTIVE_CALLS_LIST=false  # números/nomes de quem está ligando
+PUBLIC_SHOW_ALERTS=false             # mensagens de alerta (podem citar detalhes internos)
+PUBLIC_SHOW_SERVER_HEALTH=false      # CPU/memória/disco/serviços do servidor
+```
+
+Depois de mudar o `.env`, basta reiniciar o backend
+(`sudo systemctl restart pbx-dashboard-backend` em produção, ou parar e
+rodar `npm start` de novo em desenvolvimento) — não precisa rebuildar o
+frontend, ele lê a configuração do backend a cada carregamento.
+
+## Logo da empresa
+
+Para trocar o ícone padrão pelo logo da sua empresa (aparece no painel
+público, no painel logado e na tela de login):
+
+1. Coloque o arquivo de imagem em `frontend/public/logo.png` (ou `.svg`).
+2. No `frontend/.env`, defina `VITE_LOGO_URL=/logo.png`.
+3. Rode `npm run build` de novo (é um valor "gravado" no build estático).
 
 ## Instalação no Debian — passo a passo (do zero)
 
@@ -205,6 +251,8 @@ O backend sobe em `http://localhost:3001` (padrão) com:
 
 - `GET /health` — healthcheck simples, sem autenticação.
 - `POST /api/auth/login` — autenticação (usuário/senha → JWT).
+- `GET /api/public/dashboard` — painel público, sem autenticação; retorna
+  somente os cards ligados em `PUBLIC_SHOW_*` (ver seção "Painel público").
 - `GET /api/status`, `/api/extensions`, `/api/extensions/summary`,
   `/api/calls/active`, `/api/calls/summary?range=today|7d|30d`,
   `/api/calls/today-summary`, `/api/alerts`, `/api/server/health` —

@@ -1,4 +1,5 @@
 import Icon, { ICONS } from './Icon.jsx';
+import Logo from './Logo.jsx';
 
 function initials(name) {
   if (!name) return '?';
@@ -16,9 +17,7 @@ export default function Header({
       background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '18px 22px', boxShadow: colors.shadow,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: colors.primarySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Icon paths={['M2 3h20v8H2z', 'M2 13h20v8H2z', 'M6 7h.01', 'M6 17h.01']} size={22} color={colors.primary} strokeWidth={2} />
-        </div>
+        <Logo colors={colors} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 600, fontSize: 17, color: colors.textPrimary, lineHeight: 1.2 }}>{companyName}</div>
           <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>{pbxName}</div>

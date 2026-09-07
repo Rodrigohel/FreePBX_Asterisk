@@ -1,5 +1,5 @@
 import { useAuth } from './hooks/useAuth.js';
-import Login from './pages/Login.jsx';
+import PublicDashboard from './pages/PublicDashboard.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 
 export default function App() {
@@ -10,7 +10,7 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <Login onLogin={login} />;
+    return <PublicDashboard onLogin={login} />;
   }
 
   return <Dashboard user={user} onLogout={logout} />;

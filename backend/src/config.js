@@ -47,4 +47,28 @@ export const config = {
   },
 
   monitorIntervalMs: Number(process.env.MONITOR_INTERVAL_MS || 15000),
+
+  // Painel público (sem login): cada card pode ser ligado/desligado
+  // independentemente. Pense com cuidado antes de ligar os marcados como
+  // "dados sensíveis" — eles ficam visíveis para qualquer pessoa com o link,
+  // sem autenticação.
+  public: {
+    enabled: bool(process.env.PUBLIC_DASHBOARD_ENABLED, true),
+    cards: {
+      status: bool(process.env.PUBLIC_SHOW_STATUS, true),
+      heroBanner: bool(process.env.PUBLIC_SHOW_HERO_BANNER, true),
+      extensionsSummary: bool(process.env.PUBLIC_SHOW_EXTENSIONS_SUMMARY, true),
+      // dados sensíveis: mostra nome de cada ramal
+      extensionsList: bool(process.env.PUBLIC_SHOW_EXTENSIONS_LIST, false),
+      activeCallsCount: bool(process.env.PUBLIC_SHOW_ACTIVE_CALLS_COUNT, true),
+      // dados sensíveis: mostra números/nomes de quem está ligando
+      activeCallsList: bool(process.env.PUBLIC_SHOW_ACTIVE_CALLS_LIST, false),
+      activityChart: bool(process.env.PUBLIC_SHOW_ACTIVITY_CHART, true),
+      todaySummary: bool(process.env.PUBLIC_SHOW_TODAY_SUMMARY, false),
+      // dados sensíveis: mensagens de alerta podem revelar detalhes internos
+      alerts: bool(process.env.PUBLIC_SHOW_ALERTS, false),
+      // dados sensíveis: detalhes de infraestrutura do servidor
+      serverHealth: bool(process.env.PUBLIC_SHOW_SERVER_HEALTH, false),
+    },
+  },
 };

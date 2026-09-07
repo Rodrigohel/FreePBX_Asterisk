@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { getColors } from '../theme/colors.js';
-import Icon from '../components/Icon.jsx';
+import Logo from './Logo.jsx';
 
-export default function Login({ onLogin }) {
-  const colors = getColors('light');
+export default function LoginModal({ colors, onLogin, onClose }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -23,15 +21,32 @@ export default function Login({ onLogin }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: colors.bgPage, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Manrope',sans-serif", padding: 20 }}>
-      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 360, background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '28px 26px', boxShadow: colors.shadow }}>
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 1000,
+      }}
+    >
+      <form
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={handleSubmit}
+        style={{ width: '100%', maxWidth: 360, background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '28px 26px', boxShadow: colors.shadow, position: 'relative' }}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar"
+          style={{ position: 'absolute', top: 14, right: 14, border: 'none', background: 'transparent', color: colors.textTertiary, fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
+        >
+          ×
+        </button>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: colors.primarySoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon paths={['M2 3h20v8H2z', 'M2 13h20v8H2z', 'M6 7h.01', 'M6 17h.01']} size={22} color={colors.primary} />
-          </div>
+          <Logo colors={colors} />
           <div>
-            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, color: colors.textPrimary }}>Dashboard PBX</div>
-            <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Entre para acessar o painel</div>
+            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, color: colors.textPrimary }}>Entrar</div>
+            <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Acesse o painel completo</div>
           </div>
         </div>
 

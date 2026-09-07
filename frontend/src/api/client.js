@@ -50,6 +50,7 @@ export const api = {
   todaySummary: () => request('/api/calls/today-summary'),
   alerts: () => request('/api/alerts'),
   serverHealth: () => request('/api/server/health'),
+  publicDashboard: (range) => request(`/api/public/dashboard${range ? `?range=${range}` : ''}`),
 };
 
 export function connectLiveSocket(onMessage) {
