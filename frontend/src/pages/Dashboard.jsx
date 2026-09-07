@@ -126,12 +126,12 @@ export default function Dashboard({ user, onLogout }) {
 
         <ActivityChart colors={colors} range={range} onRangeChange={setRange} trend={trend} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(380px,1fr))', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
           <ExtensionsPanel colors={colors} extensions={extensions} />
           <ActiveCallsPanel colors={colors} calls={activeCalls} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(380px,1fr))', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
           <AlertsPanel colors={colors} alerts={alerts} />
           <ServerHealthPanel colors={colors} health={health} />
         </div>

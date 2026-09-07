@@ -25,7 +25,7 @@ export default function TodaySummaryPanel({ colors, summary }) {
   return (
     <div style={{ background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '18px 22px', boxShadow: colors.shadow }}>
       <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 15, fontWeight: 600, color: colors.textPrimary, marginBottom: 12 }}>Resumo de chamadas de hoje</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(130px,100%),1fr))', gap: 14 }}>
         {stats.map((st) => (
           <div key={st.label}>
             <div style={{ fontSize: 12, color: colors.textSecondary, fontWeight: 600 }}>{st.label}</div>

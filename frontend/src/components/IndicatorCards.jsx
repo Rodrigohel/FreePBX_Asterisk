@@ -35,7 +35,7 @@ function Card({ colors, card, index }) {
 
 export default function IndicatorCards({ colors, cards }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 14 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(210px,100%),1fr))', gap: 14 }}>
       {cards.map((card, i) => (
         <Card key={card.title} colors={colors} card={card} index={i} />
       ))}
