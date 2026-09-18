@@ -104,6 +104,18 @@ público, no painel logado e na tela de login):
 Estes passos assumem um servidor Debian que **já tem o FreePBX/Asterisk
 instalado e funcionando**, e que você tem acesso root/sudo via SSH.
 
+> ⚠️ **Nunca use `systemctl restart asterisk` (ou `stop`/`start`) direto**
+> num FreePBX Distro/Sangoma. O script `/etc/init.d/asterisk` que o systemd
+> chama por trás tem uma checagem de "já está rodando" que pode travar e
+> **impedir o Asterisk de voltar** depois de parar — derrubando o telefone
+> da empresa até alguém perceber e corrigir manualmente (`fwconsole start`
+> ou limpar `/var/run/asterisk/`). Use sempre **`fwconsole restart`** (ou
+> `fwconsole stop` / `fwconsole start`), que é o comando de controle do
+> próprio FreePBX e lida com isso corretamente. Qualquer mudança em
+> `asterisk.conf`, `manager.conf`/`manager_custom.conf` etc. que precise de
+> restart completo (não só `asterisk -rx "... reload"`) deve usar
+> `fwconsole restart`.
+
 ### 1. Instalar o Node.js 20 (LTS)
 
 O Node.js que vem no repositório padrão do Debian costuma ser antigo demais.
@@ -138,20 +150,36 @@ rsync -avz --exclude node_modules --exclude dist ./ usuario@ip-do-servidor:/opt/
 ### 3. Criar o usuário AMI no FreePBX
 
 No painel do FreePBX: **Settings → Asterisk Manager Users** → adicionar um
-usuário novo (ex.: `dashboard`), com uma senha forte e permissões de leitura
-(`read = system,call,agent,user`, sem `write`). Ou edite diretamente
-`/etc/asterisk/manager.conf`:
+usuário novo (ex.: `dashboard`), com uma senha forte. Ou edite diretamente
+`/etc/asterisk/manager_custom.conf` (esse arquivo, ao contrário de
+`manager.conf`, sobrevive ao "Apply Config" do FreePBX):
 
 ```ini
 [dashboard]
 secret = troque-esta-senha
 deny = 0.0.0.0/0.0.0.0
 permit = 127.0.0.1/255.255.255.255
-read = system,call,agent,user
-write =
+read = system,call,log,verbose,command,agent,user,config,dtmf,reporting,cdr,dialplan,originate,agi,cc,security,message
+write = system,call,log,verbose,command,agent,user,config,dtmf,reporting,cdr,dialplan,originate,agi,cc,security,message
 ```
 
 Depois recarregue: `asterisk -rx "manager reload"`.
+
+> ⚠️ **Por que `write` também precisa dessas classes, mesmo sendo um usuário
+> só de consulta:** em algumas versões do Asterisk (confirmado no 22.10.1),
+> ações de **listagem** como `PJSIPShowEndpoints` e `CoreShowChannels` —
+> que não alteram nada, só leem — na prática checam a permissão de
+> **escrita** (`write`), não a de leitura, apesar da documentação do
+> Asterisk (`manager show command PJSIPShowEndpoints`) mostrar
+> `[Privilege] system,all` sem deixar claro qual lado. Com `write` vazio ou
+> mais restrito que `read`, essas ações retornam
+> `Response: Error / Message: Permission denied` mesmo com `read = all` —
+> o painel então cai silenciosamente para dados simulados
+> (`"source":"mock","error":"Permission denied"` na resposta da API) sem
+> nenhum erro óbvio nos logs. Se isso acontecer, confirme com
+> `asterisk -rx "manager show command <NomeDaAção>"` qual privilégio a ação
+> exige e garanta que o mesmo nome de classe esteja tanto em `read` quanto
+> em `write` para esse usuário.
 
 ### 4. Configurar e subir o backend
 
