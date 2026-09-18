@@ -3,10 +3,12 @@ import { config } from '../config.js';
 
 let pool = null;
 
+let loggedOnce = false;
+
 /**
  * Pool lazy de conexões ao banco de CDR do FreePBX (asteriskcdrdb).
- * Retorna null se a conexão falhar, para permitir fallback a mock
- * em vez de derrubar o backend inteiro.
+ * Lança erro se a conexão falhar, para permitir que quem chamou (os
+ * services) faça fallback a mock em vez de derrubar o backend inteiro.
  */
 export async function getCdrPool() {
   if (pool) return pool;
@@ -24,9 +26,14 @@ export async function getCdrPool() {
     // valida a conexão
     const conn = await pool.getConnection();
     conn.release();
+    if (!loggedOnce) {
+      console.log('[CDR] conectado com sucesso ao banco', config.cdr.database);
+      loggedOnce = true;
+    }
     return pool;
   } catch (err) {
     pool = null;
+    console.error('[CDR] erro de conexão:', err && err.message ? err.message : err);
     throw err;
   }
 }
