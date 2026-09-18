@@ -4,8 +4,8 @@ import { db } from './sqlite.js';
 
 /**
  * Cria (ou atualiza a senha de) um usuário do painel.
- * Uso: node src/db/seedUser.js
- * (funciona tanto em terminal interativo quanto com stdin via pipe)
+ * Uso interativo: node src/db/seedUser.js
+ * Uso não-interativo (scripts): node src/db/seedUser.js <usuario> <nomeExibicao> <senha>
  */
 function promptLines(questions) {
   return new Promise((resolve) => {
@@ -27,11 +27,14 @@ function promptLines(questions) {
 }
 
 async function main() {
-  const [username, displayName, password] = await promptLines([
-    'Usuário (login)',
-    'Nome de exibição (ex.: Renata M.)',
-    'Senha',
-  ]);
+  const argv = process.argv.slice(2);
+  const [username, displayName, password] = argv.length >= 3
+    ? argv
+    : await promptLines([
+      'Usuário (login)',
+      'Nome de exibição (ex.: Renata M.)',
+      'Senha',
+    ]);
 
   if (!username || !password) {
     console.error('Usuário e senha são obrigatórios.');
