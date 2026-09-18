@@ -58,6 +58,12 @@ class AmiClient extends EventEmitter {
   /**
    * Executa uma ação AMI e resolve com a resposta (e eventuais eventos
    * relacionados, quando a ação retorna uma lista via múltiplos eventos).
+   *
+   * Filtra os eventos coletados pelo ActionID desta chamada específica —
+   * sem isso, duas chamadas concorrentes (ex.: o polling do frontend e o
+   * push do WebSocket rodando quase ao mesmo tempo) recebem cada uma os
+   * eventos da OUTRA também, duplicando os resultados (ex.: 104 ramais
+   * virando 208).
    */
   action(action, collectEvent) {
     return new Promise((resolve, reject) => {
@@ -68,16 +74,22 @@ class AmiClient extends EventEmitter {
 
       const collected = [];
       let onEvent;
+      let actionId;
+
       if (collectEvent) {
         onEvent = (evt) => {
-          if (evt.event && evt.event.toLowerCase() === collectEvent.toLowerCase()) {
+          if (
+            evt.event &&
+            evt.event.toLowerCase() === collectEvent.toLowerCase() &&
+            (!actionId || evt.actionid === actionId)
+          ) {
             collected.push(evt);
           }
         };
         this.ami.on('managerevent', onEvent);
       }
 
-      this.ami.action(action, (err, res) => {
+      actionId = this.ami.action(action, (err, res) => {
         if (collectEvent) {
           // dá um tempo curto para os eventos da lista chegarem após a resposta final
           setTimeout(() => {
