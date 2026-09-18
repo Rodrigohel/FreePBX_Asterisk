@@ -36,9 +36,25 @@ export default function Dashboard({ user, onLogout }) {
   const [todaySummary, setTodaySummary] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [health, setHealth] = useState(null);
+  const [extensionFilter, setExtensionFilter] = useState(null);
+
+  const extensionsSectionRef = useRef(null);
+  const activeCallsSectionRef = useRef(null);
+  const alertsSectionRef = useRef(null);
+  const healthSectionRef = useRef(null);
+  const todaySummarySectionRef = useRef(null);
 
   const colors = getColors(theme);
   const isDark = theme === 'dark';
+
+  const scrollToSection = useCallback((ref) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const toggleExtensionFilter = useCallback((value) => {
+    setExtensionFilter((current) => (current === value ? null : value));
+    scrollToSection(extensionsSectionRef);
+  }, [scrollToSection]);
 
   const loadAll = useCallback(async (currentRange) => {
     const [statusRes, extRes, extSumRes, callsRes, trendRes, todayRes, alertsRes, healthRes] = await Promise.all([
@@ -97,7 +113,18 @@ export default function Dashboard({ user, onLogout }) {
   const activeAlertsCount = alerts.filter((a) => a.status === 'active').length;
   const statusPill = (STATUS_PILL[status.overall] || STATUS_PILL.operational)(colors);
   const heroBanner = buildHeroBanner(colors, { extSummary, activeCallsCount: activeCalls.length, activeAlertsCount, overall: status.overall });
-  const indicatorCards = buildIndicatorCards(colors, { extSummary, activeCallsCount: activeCalls.length, todaySummary, health, activeAlertsCount });
+  const indicatorCards = buildIndicatorCards(colors, {
+    extSummary, activeCallsCount: activeCalls.length, todaySummary, health, activeAlertsCount,
+    onCardClick: {
+      extensionsAll: () => { setExtensionFilter(null); scrollToSection(extensionsSectionRef); },
+      extensionsOnline: () => toggleExtensionFilter('__online__'),
+      extensionsOffline: () => toggleExtensionFilter('offline'),
+      activeCalls: () => scrollToSection(activeCallsSectionRef),
+      alerts: () => scrollToSection(alertsSectionRef),
+      health: () => scrollToSection(healthSectionRef),
+      todaySummary: () => scrollToSection(todaySummarySectionRef),
+    },
+  });
 
   return (
     <div style={{ background: colors.bgPage, minHeight: '100vh', transition: 'background .2s ease' }}>
@@ -127,16 +154,26 @@ export default function Dashboard({ user, onLogout }) {
         <ActivityChart colors={colors} range={range} onRangeChange={setRange} trend={trend} />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
-          <ExtensionsPanel colors={colors} extensions={extensions} />
-          <ActiveCallsPanel colors={colors} calls={activeCalls} />
+          <div ref={extensionsSectionRef}>
+            <ExtensionsPanel colors={colors} extensions={extensions} filter={extensionFilter} onFilterChange={toggleExtensionFilter} />
+          </div>
+          <div ref={activeCallsSectionRef}>
+            <ActiveCallsPanel colors={colors} calls={activeCalls} />
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
-          <AlertsPanel colors={colors} alerts={alerts} />
-          <ServerHealthPanel colors={colors} health={health} />
+          <div ref={alertsSectionRef}>
+            <AlertsPanel colors={colors} alerts={alerts} />
+          </div>
+          <div ref={healthSectionRef}>
+            <ServerHealthPanel colors={colors} health={health} />
+          </div>
         </div>
 
-        <TodaySummaryPanel colors={colors} summary={todaySummary} />
+        <div ref={todaySummarySectionRef}>
+          <TodaySummaryPanel colors={colors} summary={todaySummary} />
+        </div>
 
       </div>
     </div>
