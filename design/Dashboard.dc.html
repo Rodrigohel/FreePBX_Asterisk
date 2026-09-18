@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  body { margin:0; -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:#2563EB; text-decoration:none; }
+  a:hover { color:#1D4ED8; text-decoration:underline; }
+  @keyframes pulseDot { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+  @keyframes spinIcon { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  @keyframes fadeInUp { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+  @keyframes popIn { from{opacity:0;transform:scale(.9);} to{opacity:1;transform:scale(1);} }
+</style>
+</helmet>
+
+<div style="{{ pageStyle }}">
+
+  <div style="max-width:1440px;margin:0 auto;padding:20px 24px 64px;display:flex;flex-direction:column;gap:20px;font-family:'Manrope',sans-serif;">
+
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:{{ colors.textTertiary }};letter-spacing:.02em;">
+      <span style="width:6px;height:6px;border-radius:99px;background:{{ colors.amber }};"></span>
+      Modo demonstração — dados simulados
+    </div>
+
+    <header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;background:{{ colors.bgCard }};border:1px solid {{ colors.border }};border-radius:16px;padding:18px 22px;box-shadow:{{ colors.shadow }};">
+      <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+        <div style="width:44px;height:44px;border-radius:12px;background:{{ colors.primarySoft }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ colors.primary }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="8" rx="2"></rect><rect x="2" y="13" width="20" height="8" rx="2"></rect><path d="M6 7h.01M6 17h.01"></path></svg>
+        </div>
+        <div style="min-width:0;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;color:{{ colors.textPrimary }};line-height:1.2;">{{ props_companyName }}</div>
+          <div style="font-size:13px;color:{{ colors.textSecondary }};margin-top:2px;">{{ props_pbxName }}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;background:{{ statusPill.bg }};color:{{ statusPill.fg }};padding:6px 12px;border-radius:99px;font-size:13px;font-weight:700;margin-left:8px;">
+          <span style="width:7px;height:7px;border-radius:99px;background:{{ statusPill.fg }};animation:pulseDot 2s ease-in-out infinite;"></span>
+          {{ statusPill.label }}
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:{{ colors.textSecondary }};">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{{ connectionInfo.color }}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a10 10 0 0 1 14 0"></path><path d="M8.5 16.5a5 5 0 0 1 7 0"></path><path d="M2 8.5a15 15 0 0 1 20 0"></path><circle cx="12" cy="20" r="1" fill="{{ connectionInfo.color }}"></circle></svg>
+            {{ connectionInfo.label }}
+          </div>
+          <div style="font-size:12px;color:{{ colors.textTertiary }};">Atualizado {{ lastUpdateLabel }}</div>
+        </div>
+
+        <button onClick="{{ handleRefresh }}" style="{{ refreshBtnStyle }}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="{{ refreshIconStyle }}"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 16h5v5"></path></svg>
+          Atualizar
+        </button>
+
+        <button onClick="{{ toggleTheme }}" title="Alternar tema" style="width:36px;height:36px;border-radius:10px;border:1px solid {{ colors.border }};background:{{ colors.bgCardAlt }};display:flex;align-items:center;justify-content:center;cursor:pointer;color:{{ colors.textSecondary }};">
+          <sc-if value="{{ isDark }}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+          </sc-if>
+          <sc-if value="{{ isLight }}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+          </sc-if>
+        </button>
+
+        <div style="display:flex;align-items:center;gap:8px;padding-left:14px;border-left:1px solid {{ colors.border }};">
+          <div style="width:32px;height:32px;border-radius:99px;background:{{ colors.primary }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;font-family:'Space Grotesk',sans-serif;">RM</div>
+          <div style="font-size:13px;font-weight:600;color:{{ colors.textPrimary }};">Renata M.</div>
+        </div>
+      </div>
+    </header>
+
+    <div style="background:{{ heroBanner.bg }};border:1px solid {{ heroBanner.border }};border-radius:16px;padding:16px 20px;display:flex;align-items:center;gap:14px;box-shadow:{{ colors.shadow }};animation:fadeInUp .4s ease both;">
+      <div style="width:38px;height:38px;border-radius:99px;background:{{ heroBanner.iconBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="{{ heroBanner.iconColor }}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <sc-for list="{{ heroBanner.iconPaths }}" as="hseg" hint-placeholder-count="2"><path d="{{ hseg }}"></path></sc-for>
+        </svg>
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:{{ colors.textPrimary }};font-family:'Space Grotesk',sans-serif;">{{ heroBanner.title }}</div>
+        <div style="font-size:13px;color:{{ colors.textSecondary }};margin-top:1px;">{{ heroBanner.subtitle }}</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;">
+      <sc-for list="{{ indicatorCards }}" as="card" hint-placeholder-count="8">
+        <div style="{{ card.wrapStyle }}" style-hover="{{ cardHoverStyle }}">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+            <div style="width:34px;height:34px;border-radius:9px;background:{{ card.iconBg }};display:flex;align-items:center;justify-content:center;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ card.iconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <sc-for list="{{ card.iconPaths }}" as="seg" hint-placeholder-count="2">
+                  <path d="{{ seg }}"></path>
+                </sc-for>
+              </svg>
+            </div>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{{ colors.textTertiary }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div style="font-size:12.5px;color:{{ colors.textSecondary }};margin-top:12px;font-weight:600;">{{ card.title }}</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:27px;font-weight:700;color:{{ colors.textPrimary }};margin-top:2px;">{{ card.value }}</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:8px;font-size:12px;font-weight:600;color:{{ card.stateColor }};">
+            <span style="width:6px;height:6px;border-radius:99px;background:{{ card.stateColor }};"></span>
+            {{ card.stateText }}
+          </div>
+          <div style="font-size:11.5px;color:{{ colors.textTertiary }};margin-top:6px;line-height:1.4;">{{ card.plain }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="background:{{ colors.bgCard }};border:1px solid {{ colors.border }};border-radius:16px;padding:20px 22px;box-shadow:{{ colors.shadow }};">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;color:{{ colors.textPrimary }};">Atividade telefônica</div>
+          <div style="font-size:12.5px;color:{{ colors.textSecondary }};margin-top:2px;">Recebidas, realizadas, perdidas e falhas</div>
+        </div>
+        <div style="display:flex;gap:4px;background:{{ colors.bgCardAlt }};padding:4px;border-radius:10px;">
+          <sc-for list="{{ rangeOptions }}" as="opt" hint-placeholder-count="3">
+            <button onClick="{{ opt.onClick }}" style="{{ opt.style }}">{{ opt.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div ref="{{ trendRef }}" style="width:100%;height:clamp(230px,30vw,360px);"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;align-items:start;">
+
+      <div style="background:{{ colors.bgCard }};border:1px solid {{ colors.border }};border-radius:16px;padding:20px 22px;box-shadow:{{ colors.shadow }};">
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;color:{{ colors.textPrimary }};margin-bottom:2px;">Estado dos ramais</div>
+        <div style="font-size:12.5px;color:{{ colors.textSecondary }};margin-bottom:10px;">Clique em uma categoria para filtrar</div>
+        <div ref="{{ donutRef }}" style="width:100%;height:220px;"></div>
+        <div style="display:flex;flex-direction:column;gap:0;margin-top:8px;border-top:1px solid {{ colors.border }};">
+          <sc-for list="{{ extensionRows }}" as="ext" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid {{ colors.border }};font-size:13px;">
+              <span style="width:7px;height:7px;border-radius:99px;background:{{ ext.color }};flex-shrink:0;"></span>
+              <span style="font-weight:700;color:{{ colors.textPrimary }};font-family:'Space Grotesk',sans-serif;width:44px;flex-shrink:0;">{{ ext.number }}</span>
+              <span style="color:{{ colors.textPrimary }};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ext.name }}</span>
+              <span style="color:{{ ext.color }};font-weight:600;font-size:12px;">{{ ext.state }}</span>
+              <span style="color:{{ colors.textTertiary }};font-size:12px;width:56px;text-align:right;flex-shrink:0;">{{ ext.meta }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background:{{ colors.bgCard }};border:1px solid {{ colors.border }};border-radius:16px;padding:20px 22px;box-shadow:{{ colors.shadow }};">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;color:{{ colors.textPrimary }};">Chamadas em andamento</div>
+          <span style="font-size:12px;font-weight:700;color:{{ colors.primary }};background:{{ colors.primarySoft }};padding:3px 9px;border-radius:99px;">{{ activeCallsCount }}</span>
+        </div>
+        <div style="font-size:12.5px;color:{{ colors.textSecondary }};margin-bottom:12px;">Atualização em tempo real</div>
+
+        <sc-if value="{{ hasActiveCalls }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:10px;max-height:280px;overflow-y:auto;">
+            <sc-for list="{{ activeCalls }}" as="call" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:{{ colors.bgCardAlt }};border:1px solid {{ colors.border }};">
+                <div style="width:30px;height:30px;border-radius:9px;background:{{ call.dirBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ call.dirColor }}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <sc-for list="{{ call.dirIconPaths }}" as="seg2" hint-placeholder-count="2"><path d="{{ seg2 }}"></path></sc-for>
+                  </svg>
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13.5px;font-weight:700;color:{{ colors.textPrimary }};">{{ call.ext }} · {{ call.name }}</div>
+                  <div style="font-size:12px;color:{{ colors.textSecondary }};margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ call.destination }}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                  <div style="font-size:12px;font-weight:700;color:{{ call.stateColor }};">{{ call.stateLabel }}</div>
+                  <div style="font-size:11.5px;color:{{ colors.textTertiary }};margin-top:1px;font-family:'Space Grotesk',sans-serif;">{{ call.duration }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ hasNoActiveCalls }}">
+          <div style="text-align:center;padding:30px 10px;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="{{ colors.textTertiary }}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:8px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            <div style="font-size:13.5px;font-weight:600;color:{{ colors.textPrimary }};">Nenhuma chamada em andamento</div>
+            <div style="font-size:12.5px;color:{{ colors.textSecondary }};margin-top:2px;">O sistema está livre neste momento.</div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;align-items:start;">
+
+      <div style="background:{{ colors.bgCard }};border:1px solid {{ colors.border }};border-radius:16px;padding:20px 22px;box-shadow:{{ colors.shadow }};">
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;color:{{ colors.textPrimary }};margin-bottom:12px;">Alertas recentes</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ alerts }}" as="alert" hint-placeholder-count="4">
+            <div style="display:flex;gap:12px;padding:12px;border-radius:12px;background:{{ colors.bgCardAlt }};border:1px solid {{ colors.border }};">
+              <div style="width:30px;height:30px;border-radius:9px;background:{{ alert.iconBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ alert.iconColor }}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <sc-for list="{{ alert.iconPaths }}" as="seg3" hint-placeholder-count="2"><path d="{{ seg3 }}"></path></sc-for>
+                </svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="font-size:11px;font-weight:800;letter-spacing:.03em;color:{{ alert.iconColor }};text-transform:uppercase;">{{ alert.severity }}</span>
+                  <span style="font-size:11px;color:{{ colors.textTertiary }};">{{ alert.time }}</span>
+                </div>
+                <div style="font-size:13.5px;color:{{ colors.textPrimary }};margin-top:3px;">{{ alert.message }}</div>
+              </div>
+              <div style="flex-shrink:0;font-size:11.5px;font-weight:700;color:{{ alert.statusColor }};background:{{ alert.statusBg }};padding:3px 9px;border-radius:99px;align-self:flex-start;">{{ alert.statusLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background:{{ colors.bgCard }};border:1px solid {{ colors.border }};border-radius:16px;padding:20px 22px;box-shadow:{{ colors.shadow }};">
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;color:{{ colors.textPrimary }};margin-bottom:12px;">Saúde do servidor</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <sc-for list="{{ healthMetrics }}" as="hm" hint-placeholder-count="4">
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;">
+                <span style="color:{{ colors.textSecondary }};font-weight:600;">{{ hm.label }}</span>
+                <span style="color:{{ colors.textPrimary }};font-weight:700;font-family:'Space Grotesk',sans-serif;">{{ hm.valueLabel }}</span>
+              </div>
+              <div style="height:6px;border-radius:99px;background:{{ colors.bgCardAlt }};overflow:hidden;">
+                <div style="{{ hm.barStyle }}"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid {{ colors.border }};">
+          <sc-for list="{{ services }}" as="svc" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:{{ colors.textPrimary }};">
+              <span style="width:7px;height:7px;border-radius:99px;background:{{ svc.color }};flex-shrink:0;"></span>
+              {{ svc.name }}
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:{{ colors.bgCard }};border:1px solid {{ colors.border }};border-radius:16px;padding:18px 22px;box-shadow:{{ colors.shadow }};">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:{{ colors.textPrimary }};margin-bottom:12px;">Resumo de chamadas de hoje</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px;">
+        <sc-for list="{{ summaryStats }}" as="st" hint-placeholder-count="7">
+          <div>
+            <div style="font-size:12px;color:{{ colors.textSecondary }};font-weight:600;">{{ st.label }}</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:{{ st.color }};margin-top:2px;">{{ st.value }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;companyName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Acme Distribuidora&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;pbxName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;PBX Matriz&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+
+class Component extends DCLogic {
+  state = { theme: 'light', range: 'today', refreshing: false, lastUpdate: new Date() };
+
+  constructor(props) {
+    super(props);
+    this.trendRef = React.createRef();
+    this.donutRef = React.createRef();
+    this.trendChart = null;
+    this.donutChart = null;
+    this._resizeHandler = () => { this.trendChart && this.trendChart.resize(); this.donutChart && this.donutChart.resize(); };
+
+    this.trendData = {
+      today: { categories: ['08h','10h','12h','14h','16h','18h','20h'], recebidas: [4,9,14,18,12,8,3], realizadas: [3,7,10,13,9,6,2], perdidas: [0,1,2,1,1,0,0], falhas: [0,0,1,0,1,0,0] },
+      '7d': { categories: ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'], recebidas: [62,71,68,75,80,22,10], realizadas: [48,53,50,58,61,15,8], perdidas: [4,3,5,2,4,1,0], falhas: [1,0,2,1,1,0,0] },
+      '30d': { categories: ['Sem 1','Sem 2','Sem 3','Sem 4'], recebidas: [410,455,398,470], realizadas: [312,340,301,355], perdidas: [18,22,15,20], falhas: [4,6,3,5] }
+    };
+  }
+
+  componentDidMount() {
+    window.addEventListener('resize', this._resizeHandler);
+    this.initCharts();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._resizeHandler);
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.theme !== this.state.theme || prevState.range !== this.state.range) {
+      this.renderCharts();
+    }
+  }
+
+  initCharts() {
+    if (window.echarts && this.trendRef.current && this.donutRef.current) {
+      this.trendChart = window.echarts.init(this.trendRef.current, null, { renderer: 'svg' });
+      this.donutChart = window.echarts.init(this.donutRef.current, null, { renderer: 'svg' });
+      this.renderCharts();
+    } else {
+      setTimeout(() => this.initCharts(), 150);
+    }
+  }
+
+  getColors() {
+    const dark = this.state.theme === 'dark';
+    return {
+      bgPage: dark ? '#0F172A' : '#F6F8FB',
+      bgCard: dark ? '#1A2436' : '#FFFFFF',
+      bgCardAlt: dark ? '#141D2C' : '#F8FAFC',
+      border: dark ? '#243046' : '#E2E8F0',
+      textPrimary: dark ? '#F1F5F9' : '#0F172A',
+      textSecondary: dark ? '#94A3B8' : '#64748B',
+      textTertiary: dark ? '#64748B' : '#94A3B8',
+      shadow: dark ? '0 1px 2px rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.35)' : '0 1px 2px rgba(15,23,42,0.06), 0 8px 24px rgba(15,23,42,0.05)',
+      primary: '#2563EB', primarySoft: dark ? 'rgba(37,99,235,0.18)' : '#DBEAFE',
+      green: '#16A34A', greenSoft: dark ? 'rgba(22,163,74,0.18)' : '#DCFCE7',
+      amber: '#F59E0B', amberSoft: dark ? 'rgba(245,158,11,0.18)' : '#FEF3C7',
+      red: '#DC2626', redSoft: dark ? 'rgba(220,38,38,0.18)' : '#FEE2E2',
+      gray: '#334155', graySoft: dark ? 'rgba(100,116,139,0.18)' : '#F1F5F9'
+    };
+  }
+
+  renderCharts() {
+    const c = this.getColors();
+    const d = this.trendData[this.state.range];
+    const axisColor = c.textTertiary;
+    if (this.trendChart) {
+      this.trendChart.setOption({
+        textStyle: { fontFamily: 'Manrope, sans-serif', color: c.textSecondary },
+        color: [c.primary, c.green, c.red, c.amber],
+        grid: { left: 8, right: 8, top: 36, bottom: 8, containLabel: true },
+        legend: { top: 0, right: 0, textStyle: { color: c.textSecondary, fontSize: 12 }, itemWidth: 10, itemHeight: 10, icon: 'circle' },
+        tooltip: { trigger: 'axis', backgroundColor: c.bgCard, borderColor: c.border, textStyle: { color: c.textPrimary }, extraCssText: 'box-shadow:0 8px 24px rgba(0,0,0,0.12);border-radius:10px;' },
+        xAxis: { type: 'category', data: d.categories, axisLine: { lineStyle: { color: c.border } }, axisLabel: { color: axisColor, fontSize: 11 }, axisTick: { show: false } },
+        yAxis: { type: 'value', splitLine: { lineStyle: { color: c.border, type: 'dashed' } }, axisLabel: { color: axisColor, fontSize: 11 } },
+        series: [
+          { name: 'Recebidas', type: 'line', smooth: true, symbol: 'circle', symbolSize: 6, showSymbol: false, data: d.recebidas, areaStyle: { opacity: 0.08 }, lineStyle: { width: 3 } },
+          { name: 'Realizadas', type: 'line', smooth: true, symbol: 'circle', symbolSize: 6, showSymbol: false, data: d.realizadas, lineStyle: { width: 3 } },
+          { name: 'Perdidas', type: 'line', smooth: true, symbol: 'circle', symbolSize: 6, showSymbol: false, data: d.perdidas, lineStyle: { width: 2 } },
+          { name: 'Falhas', type: 'line', smooth: true, symbol: 'circle', symbolSize: 6, showSymbol: false, data: d.falhas, lineStyle: { width: 2, type: 'dashed' } }
+        ],
+        animationDuration: 500
+      }, true);
+    }
+    if (this.donutChart) {
+      const donutData = [
+        { value: 9, name: 'Livres', itemStyle: { color: c.green } },
+        { value: 4, name: 'Em ligação', itemStyle: { color: c.red } },
+        { value: 1, name: 'Tocando', itemStyle: { color: c.primary } },
+        { value: 2, name: 'Offline', itemStyle: { color: c.textTertiary } },
+        { value: 1, name: 'Desconhecido', itemStyle: { color: c.amber } }
+      ];
+      const total = donutData.reduce((s, x) => s + x.value, 0);
+      this.donutChart.setOption({
+        textStyle: { fontFamily: 'Manrope, sans-serif' },
+        tooltip: { trigger: 'item', backgroundColor: c.bgCard, borderColor: c.border, textStyle: { color: c.textPrimary } },
+        series: [{
+          type: 'pie', radius: ['62%', '85%'], center: ['50%', '50%'],
+          label: { show: false }, labelLine: { show: false },
+          data: donutData,
+          emphasis: { scaleSize: 6 }
+        }],
+        graphic: [
+          { type: 'text', left: 'center', top: '42%', style: { text: String(total), fontSize: 26, fontWeight: 700, fill: c.textPrimary, fontFamily: 'Space Grotesk, sans-serif' } },
+          { type: 'text', left: 'center', top: '58%', style: { text: 'ramais', fontSize: 12, fill: c.textSecondary } }
+        ],
+        animationDuration: 500
+      }, true);
+    }
+  }
+
+  renderVals() {
+    const c = this.getColors();
+    const isDark = this.state.theme === 'dark';
+    const companyName = this.props.companyName ?? 'Acme Distribuidora';
+    const pbxName = this.props.pbxName ?? 'PBX Matriz';
+
+    const heroBanner = {
+      bg: c.greenSoft, border: 'transparent', iconBg: c.green, iconColor: '#fff',
+      iconPaths: ['M22 11.08V12a10 10 0 1 1-5.93-9.14', 'M22 4 12 14.01 9 11.01'],
+      title: 'Tudo funcionando bem hoje', subtitle: '13 de 17 ramais online · 3 chamadas em andamento · 2 alertas para revisar'
+    };
+
+    const cardHoverStyle = { transform: 'translateY(-4px)', boxShadow: isDark ? '0 4px 8px rgba(0,0,0,0.4), 0 16px 32px rgba(0,0,0,0.4)' : '0 4px 8px rgba(15,23,42,0.08), 0 16px 32px rgba(15,23,42,0.08)' };
+
+    const indicatorCardsRaw = [
+      { title: 'Ramais configurados', value: '17', stateColor: c.gray, stateText: 'Total cadastrado', iconBg: c.graySoft, iconColor: c.gray, iconPaths: ['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M22 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75'], plain: 'Quantidade de telefones cadastrados no sistema.' },
+      { title: 'Ramais online', value: '13', stateColor: c.green, stateText: 'Registrados agora', iconBg: c.greenSoft, iconColor: c.green, iconPaths: ['M22 11.08V12a10 10 0 1 1-5.93-9.14', 'M22 4 12 14.01 9 11.01'], plain: 'Telefones ligados e prontos para receber chamadas.' },
+      { title: 'Ramais offline', value: '4', stateColor: c.red, stateText: 'Não registrados', iconBg: c.redSoft, iconColor: c.red, iconPaths: ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z', 'M15 9l-6 6', 'M9 9l6 6'], plain: 'Telefones desligados ou sem conexão agora.' },
+      { title: 'Chamadas em andamento', value: '3', stateColor: c.primary, stateText: 'Neste momento', iconBg: c.primarySoft, iconColor: c.primary, iconPaths: ['M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z'], plain: 'Ligações acontecendo agora mesmo.' },
+      { title: 'Chamadas hoje', value: '128', stateColor: c.gray, stateText: '+18% vs. ontem', iconBg: c.graySoft, iconColor: c.gray, iconPaths: ['M3 10h18', 'M3 4h18v18H3z'], plain: 'Total de ligações feitas e recebidas hoje.' },
+      { title: 'Uptime', value: '99.8%', stateColor: c.green, stateText: '14 dias 6h', iconBg: c.greenSoft, iconColor: c.green, iconPaths: ['M12 2v2', 'M12 20v2', 'M4.93 4.93l1.41 1.41', 'M17.66 17.66l1.41 1.41', 'M2 12h2', 'M20 12h2', 'M6.34 17.66l-1.41 1.41', 'M19.07 4.93l-1.41 1.41', 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z'], plain: 'Tempo que o sistema ficou funcionando sem parar.' },
+      { title: 'Alertas ativos', value: '2', stateColor: c.amber, stateText: 'Requer atenção', iconBg: c.amberSoft, iconColor: c.amber, iconPaths: ['M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z', 'M12 9v4', 'M12 17h.01'], plain: 'Avisos que precisam da sua atenção.' },
+      { title: 'Saúde do servidor', value: 'Bom', stateColor: c.green, stateText: 'CPU 34% · RAM 61%', iconBg: c.greenSoft, iconColor: c.green, iconPaths: ['M2 3h20v8H2z', 'M2 13h20v8H2z', 'M6 7h.01', 'M6 17h.01'], plain: 'Como está o desempenho geral do sistema.' }
+    ];
+    const indicatorCards = indicatorCardsRaw.map((card, i) => ({
+      ...card,
+      wrapStyle: { background: c.bgCard, border: `1px solid ${c.border}`, borderRadius: 14, padding: '16px 18px', boxShadow: c.shadow, cursor: 'pointer', transition: 'transform .15s ease, box-shadow .15s ease', animation: `fadeInUp .4s ease both`, animationDelay: `${i * 0.05}s` }
+    }));
+
+    const rangeOptions = ['today', '7d', '30d'].map(key => ({
+      label: key === 'today' ? 'Hoje' : key === '7d' ? '7 dias' : '30 dias',
+      onClick: () => this.setState({ range: key }),
+      style: { border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: this.state.range === key ? c.bgCard : 'transparent', color: this.state.range === key ? c.primary : c.textSecondary, boxShadow: this.state.range === key ? c.shadow : 'none' }
+    }));
+
+    const extensionRows = [
+      { number: '1001', name: 'Recepção', state: 'Livre', color: c.green, meta: 'agora' },
+      { number: '1002', name: 'Financeiro', state: 'Em ligação', color: c.red, meta: '04:12' },
+      { number: '1003', name: 'Suporte', state: 'Tocando', color: c.primary, meta: '00:04' },
+      { number: '1004', name: 'Diretoria', state: 'Offline', color: c.textTertiary, meta: '2h atrás' },
+      { number: '1005', name: 'Vendas', state: 'Livre', color: c.green, meta: '11m atrás' }
+    ];
+
+    const activeCalls = [
+      { ext: '1002', name: 'Financeiro', destination: '(11) 98221-4400', stateLabel: 'Em andamento', stateColor: c.green, duration: '04:12', dirBg: c.greenSoft, dirColor: c.green, dirIconPaths: ['M17 7 7 17', '17 17 7 17 7 7'] },
+      { ext: '1003', name: 'Suporte', destination: 'Ramal 1008', stateLabel: 'Tocando', stateColor: c.primary, duration: '00:04', dirBg: c.primarySoft, dirColor: c.primary, dirIconPaths: ['M7 17 17 7', '7 7 17 7 17 17'] },
+      { ext: '1006', name: 'Cobrança', destination: '(21) 3355-1290', stateLabel: 'Em andamento', stateColor: c.green, duration: '01:47', dirBg: c.greenSoft, dirColor: c.green, dirIconPaths: ['M17 7 7 17', '17 17 7 17 7 7'] }
+    ];
+
+    const alerts = [
+      { severity: 'Crítico', message: 'Ramal 1004 offline há mais de 2 horas', time: '10:42', statusLabel: 'Ativo', statusColor: c.red, statusBg: c.redSoft, iconBg: c.redSoft, iconColor: c.red, iconPaths: ['M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z', 'M12 9v4', 'M12 17h.01'] },
+      { severity: 'Atenção', message: 'Uso de disco acima de 80%', time: '09:15', statusLabel: 'Ativo', statusColor: c.amber, statusBg: c.amberSoft, iconBg: c.amberSoft, iconColor: c.amber, iconPaths: ['M12 9v4', 'M12 17h.01', 'M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z'] },
+      { severity: 'Informação', message: 'Backup diário concluído com sucesso', time: '03:00', statusLabel: 'Resolvido', statusColor: c.textSecondary, statusBg: c.graySoft, iconBg: c.primarySoft, iconColor: c.primary, iconPaths: ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z', 'M12 16v-4', 'M12 8h.01'] },
+      { severity: 'Resolvido', message: 'Reconexão com o servidor Asterisk restabelecida', time: 'ontem, 22:10', statusLabel: 'Resolvido', statusColor: c.green, statusBg: c.greenSoft, iconBg: c.greenSoft, iconColor: c.green, iconPaths: ['M22 11.08V12a10 10 0 1 1-5.93-9.14', 'M22 4 12 14.01 9 11.01'] }
+    ];
+
+    const healthMetrics = [
+      { label: 'CPU', valueLabel: '34%', barStyle: { width: '34%', height: '100%', borderRadius: 99, background: c.primary } },
+      { label: 'Memória', valueLabel: '61%', barStyle: { width: '61%', height: '100%', borderRadius: 99, background: c.amber } },
+      { label: 'Disco', valueLabel: '48%', barStyle: { width: '48%', height: '100%', borderRadius: 99, background: c.green } },
+      { label: 'Load average', valueLabel: '0.82', barStyle: { width: '28%', height: '100%', borderRadius: 99, background: c.gray } }
+    ];
+
+    const services = [
+      { name: 'Asterisk', color: c.green }, { name: 'Banco de dados', color: c.green },
+      { name: 'Servidor web', color: c.green }, { name: 'Painel (backend)', color: c.green }
+    ];
+
+    const summaryStats = [
+      { label: 'Recebidas hoje', value: '128', color: c.textPrimary },
+      { label: 'Realizadas hoje', value: '96', color: c.textPrimary },
+      { label: 'Perdidas', value: '7', color: c.red },
+      { label: 'Com falha', value: '2', color: c.amber },
+      { label: 'Tempo médio', value: '3m12s', color: c.textPrimary },
+      { label: 'Tempo total', value: '5h42m', color: c.textPrimary },
+      { label: 'Ramal mais usado', value: '1002', color: c.primary }
+    ];
+
+    return {
+      pageStyle: { background: c.bgPage, minHeight: '100vh', transition: 'background .2s ease' },
+      colors: c, isDark, isLight: !isDark,
+      props_companyName: companyName, props_pbxName: pbxName,
+      statusPill: { bg: c.greenSoft, fg: c.green, label: 'Operacional' },
+      heroBanner,
+      connectionInfo: { color: c.green, label: 'Conectado' },
+      lastUpdateLabel: this.state.lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      refreshBtnStyle: { display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${c.border}`, background: c.bgCardAlt, color: c.textPrimary, borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+      refreshIconStyle: { animation: this.state.refreshing ? 'spinIcon 0.7s linear infinite' : 'none' },
+      handleRefresh: () => { this.setState({ refreshing: true }); setTimeout(() => this.setState({ refreshing: false, lastUpdate: new Date() }), 700); },
+      toggleTheme: () => this.setState({ theme: isDark ? 'light' : 'dark' }),
+      cardHoverStyle,
+      indicatorCards, rangeOptions, trendRef: this.trendRef, donutRef: this.donutRef,
+      extensionRows, activeCalls, hasActiveCalls: activeCalls.length > 0, hasNoActiveCalls: activeCalls.length === 0,
+      activeCallsCount: activeCalls.length, alerts, healthMetrics, services, summaryStats
+    };
+  }
+}
+
+</script>
+</body>
+</html>
