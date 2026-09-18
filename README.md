@@ -117,14 +117,16 @@ node -v   # deve mostrar v20.x
 
 ### 2. Copiar o projeto para o servidor
 
-Se o código está num repositório Git:
-
 ```bash
 sudo mkdir -p /opt/pbx-dashboard
 sudo chown $USER:$USER /opt/pbx-dashboard
-git clone <URL-DO-SEU-REPOSITORIO> /opt/pbx-dashboard
+git clone -b claude/design-integration-bvawvw https://github.com/Rodrigohel/FreePBX_Asterisk.git /opt/pbx-dashboard
 cd /opt/pbx-dashboard
 ```
+
+> O código está na branch `claude/design-integration-bvawvw` (ainda não
+> mesclado na `main`). Se depois isso for mesclado, o `-b ...` deixa de ser
+> necessário.
 
 Se preferir copiar direto da sua máquina (sem Git no servidor), rode isto
 **no seu computador**, apontando para a pasta do projeto:
@@ -212,10 +214,47 @@ sudo systemctl enable --now pbx-dashboard-backend
 sudo systemctl status pbx-dashboard-backend
 ```
 
-### 7. Servir o frontend pelo Nginx que já roda no servidor
+### 7. Servir o frontend pelo servidor web que já roda no FreePBX
 
-Adicione ao seu arquivo de configuração do Nginx (dentro de um bloco
-`server { ... }` já existente, ou crie um novo site):
+Descubra qual servidor web está ativo (o FreePBX Distro normalmente usa
+**Apache**; instalações manuais em Debian puro às vezes usam Nginx):
+
+```bash
+systemctl is-active apache2 nginx httpd 2>/dev/null
+```
+
+**Se for Apache:**
+
+```bash
+sudo nano /etc/apache2/conf-available/pbx-dashboard.conf
+```
+
+```apache
+Alias /pbx-dashboard /opt/pbx-dashboard/frontend/dist
+
+<Directory /opt/pbx-dashboard/frontend/dist>
+    Options -Indexes
+    AllowOverride None
+    Require all granted
+    FallbackResource /pbx-dashboard/index.html
+</Directory>
+
+ProxyPass /pbx-dashboard/api/ http://127.0.0.1:3001/api/
+ProxyPassReverse /pbx-dashboard/api/ http://127.0.0.1:3001/api/
+
+ProxyPass /pbx-dashboard/ws ws://127.0.0.1:3001/ws
+ProxyPassReverse /pbx-dashboard/ws ws://127.0.0.1:3001/ws
+```
+
+```bash
+sudo a2enmod proxy proxy_http proxy_wstunnel
+sudo a2enconf pbx-dashboard
+sudo systemctl reload apache2
+```
+
+**Se for Nginx**, edite o site existente (geralmente em
+`/etc/nginx/sites-available/`) e acrescente dentro do bloco
+`server { ... }`:
 
 ```nginx
 location /pbx-dashboard/ {
@@ -239,10 +278,10 @@ sudo nginx -t && sudo systemctl reload nginx
 ```
 
 Acesse `http://IP-OU-DOMINIO-DO-SERVIDOR/pbx-dashboard/` no navegador — deve
-aparecer a tela de login.
+aparecer o painel público, com o botão "Entrar" no canto superior direito.
 
 > Se preferir servir na raiz do domínio (sem o prefixo `/pbx-dashboard/`),
-> ajuste os `location` acima para `/`, `/api/` e `/ws`, e refaça o build do
+> ajuste as regras acima para `/`, `/api/` e `/ws`, e refaça o build do
 > frontend com `VITE_API_URL`/`VITE_WS_URL` apontando para esse domínio.
 
 ## Endpoints do backend
