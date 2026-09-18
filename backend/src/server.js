@@ -49,6 +49,16 @@ wss.on('connection', (ws) => {
 });
 
 if (!config.forceMock) {
+  // Sem um listener de 'error', o EventEmitter do Node derruba o processo
+  // inteiro na primeira falha de conexão do AMI (usuário/senha errados,
+  // Asterisk fora do ar, etc.) — o systemd reinicia sozinho, mascarando a
+  // causa raiz. Logamos aqui para aparecer no `journalctl`.
+  amiClient.on('error', (err) => {
+    console.error('[AMI] erro de conexão:', err && err.message ? err.message : err);
+  });
+  amiClient.on('connected', () => console.log('[AMI] conectado com sucesso'));
+  amiClient.on('disconnected', () => console.warn('[AMI] desconectado'));
+
   amiClient.connect();
   amiClient.on('managerevent', () => {
     // qualquer evento relevante do AMI dispara um push (debounced de forma simples)
