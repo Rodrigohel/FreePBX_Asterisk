@@ -5,8 +5,20 @@ import { db } from './sqlite.js';
 /**
  * Cria (ou atualiza a senha de) um usuário do painel.
  * Uso interativo: node src/db/seedUser.js
- * Uso não-interativo (scripts): node src/db/seedUser.js <usuario> <nomeExibicao> <senha>
+ * Uso não-interativo: node src/db/seedUser.js <usuario> <nomeExibicao> <senha>
+ * Uso não-interativo sem expor a senha via argv/histórico do shell:
+ *   echo "minhaSenha" | node src/db/seedUser.js <usuario> <nomeExibicao> --password-stdin
  */
+function readStdin() {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => { data += chunk; });
+    process.stdin.on('end', () => resolve(data.replace(/\r?\n$/, '')));
+    process.stdin.on('error', reject);
+  });
+}
+
 function promptLines(questions) {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -28,13 +40,20 @@ function promptLines(questions) {
 
 async function main() {
   const argv = process.argv.slice(2);
-  const [username, displayName, password] = argv.length >= 3
-    ? argv
-    : await promptLines([
+  let username, displayName, password;
+
+  if (argv.length >= 3 && argv[2] === '--password-stdin') {
+    [username, displayName] = argv;
+    password = await readStdin();
+  } else if (argv.length >= 3) {
+    [username, displayName, password] = argv;
+  } else if (argv.length === 0) {
+    [username, displayName, password] = await promptLines([
       'Usuário (login)',
       'Nome de exibição (ex.: Renata M.)',
       'Senha',
     ]);
+  }
 
   if (!username || !password) {
     console.error('Usuário e senha são obrigatórios.');
