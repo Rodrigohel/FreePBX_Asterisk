@@ -5,12 +5,15 @@ import { recordExtensionState } from './extensionState.js';
 import { mockExtensions, mockExtensionsSummary } from './mockData.js';
 
 // DeviceState do PJSIP -> estado usado pelo dashboard
+// "not in use" precisa ser checado ANTES de "in use": a string "not in use"
+// contém "in use" como substring, então a ordem antiga classificava todo
+// ramal livre como "em ligação".
 function mapDeviceState(deviceState) {
   const s = (deviceState || '').toLowerCase();
+  if (s.includes('not in use')) return 'free';
   if (s.includes('unavailable') || s.includes('invalid')) return 'offline';
   if (s.includes('ringing')) return 'ringing';
   if (s.includes('busy') || s.includes('in use') || s.includes('on hold')) return 'in_call';
-  if (s.includes('not in use')) return 'free';
   return 'offline';
 }
 
