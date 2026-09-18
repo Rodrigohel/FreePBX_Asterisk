@@ -7,9 +7,10 @@ function Card({ colors, card, index }) {
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      onClick={card.onClick}
       style={{
         background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 14, padding: '16px 18px',
-        boxShadow: colors.shadow, cursor: 'default', transition: 'transform .15s ease, box-shadow .15s ease',
+        boxShadow: colors.shadow, cursor: card.onClick ? 'pointer' : 'default', transition: 'transform .15s ease, box-shadow .15s ease',
         animation: 'fadeInUp .4s ease both', animationDelay: `${index * 0.05}s`,
         transform: hover ? 'translateY(-4px)' : 'none',
       }}
@@ -44,7 +45,7 @@ export default function IndicatorCards({ colors, cards }) {
 }
 
 export function buildIndicatorCards(colors, data) {
-  const { extSummary, activeCallsCount, todaySummary, health, activeAlertsCount } = data;
+  const { extSummary, activeCallsCount, todaySummary, health, activeAlertsCount, onCardClick = {} } = data;
   const uptimeDays = Math.floor((health.uptimeSeconds || 0) / 86400);
   const uptimeHours = Math.floor(((health.uptimeSeconds || 0) % 86400) / 3600);
   const healthState = health.cpuPercent >= 85 || health.memoryPercent >= 90
@@ -54,13 +55,13 @@ export function buildIndicatorCards(colors, data) {
       : { text: 'Bom', color: colors.green };
 
   return [
-    { title: 'Ramais configurados', value: String(extSummary.configured), stateColor: colors.gray, stateText: 'Total cadastrado', iconBg: colors.graySoft, iconColor: colors.gray, iconPaths: ICONS.extensionsTotal, plain: 'Quantidade de telefones cadastrados no sistema.' },
-    { title: 'Ramais online', value: String(extSummary.online), stateColor: colors.green, stateText: 'Registrados agora', iconBg: colors.greenSoft, iconColor: colors.green, iconPaths: ICONS.check, plain: 'Telefones ligados e prontos para receber chamadas.' },
-    { title: 'Ramais offline', value: String(extSummary.offline), stateColor: colors.red, stateText: 'Não registrados', iconBg: colors.redSoft, iconColor: colors.red, iconPaths: ICONS.offline, plain: 'Telefones desligados ou sem conexão agora.' },
-    { title: 'Chamadas em andamento', value: String(activeCallsCount), stateColor: colors.primary, stateText: 'Neste momento', iconBg: colors.primarySoft, iconColor: colors.primary, iconPaths: ICONS.phoneActive, plain: 'Ligações acontecendo agora mesmo.' },
-    { title: 'Chamadas hoje', value: String(todaySummary.received + todaySummary.made), stateColor: colors.gray, stateText: 'Recebidas + realizadas', iconBg: colors.graySoft, iconColor: colors.gray, iconPaths: ICONS.calendar, plain: 'Total de ligações feitas e recebidas hoje.' },
-    { title: 'Uptime do servidor', value: `${uptimeDays}d ${uptimeHours}h`, stateColor: colors.green, stateText: 'Sem reinício', iconBg: colors.greenSoft, iconColor: colors.green, iconPaths: ICONS.uptime, plain: 'Tempo que o sistema ficou funcionando sem parar.' },
-    { title: 'Alertas ativos', value: String(activeAlertsCount), stateColor: activeAlertsCount > 0 ? colors.amber : colors.green, stateText: activeAlertsCount > 0 ? 'Requer atenção' : 'Tudo certo', iconBg: activeAlertsCount > 0 ? colors.amberSoft : colors.greenSoft, iconColor: activeAlertsCount > 0 ? colors.amber : colors.green, iconPaths: ICONS.warningTriangle, plain: 'Avisos que precisam da sua atenção.' },
-    { title: 'Saúde do servidor', value: healthState.text, stateColor: healthState.color, stateText: `CPU ${health.cpuPercent}% · RAM ${health.memoryPercent}%`, iconBg: colors.graySoft, iconColor: healthState.color, iconPaths: ICONS.extensionsIcon, plain: 'Como está o desempenho geral do sistema.' },
+    { title: 'Ramais configurados', value: String(extSummary.configured), stateColor: colors.gray, stateText: 'Total cadastrado', iconBg: colors.graySoft, iconColor: colors.gray, iconPaths: ICONS.extensionsTotal, plain: 'Quantidade de telefones cadastrados no sistema.', onClick: onCardClick.extensionsAll },
+    { title: 'Ramais online', value: String(extSummary.online), stateColor: colors.green, stateText: 'Registrados agora', iconBg: colors.greenSoft, iconColor: colors.green, iconPaths: ICONS.check, plain: 'Telefones ligados e prontos para receber chamadas.', onClick: onCardClick.extensionsOnline },
+    { title: 'Ramais offline', value: String(extSummary.offline), stateColor: colors.red, stateText: 'Não registrados', iconBg: colors.redSoft, iconColor: colors.red, iconPaths: ICONS.offline, plain: 'Telefones desligados ou sem conexão agora.', onClick: onCardClick.extensionsOffline },
+    { title: 'Chamadas em andamento', value: String(activeCallsCount), stateColor: colors.primary, stateText: 'Neste momento', iconBg: colors.primarySoft, iconColor: colors.primary, iconPaths: ICONS.phoneActive, plain: 'Ligações acontecendo agora mesmo.', onClick: onCardClick.activeCalls },
+    { title: 'Chamadas hoje', value: String(todaySummary.received + todaySummary.made), stateColor: colors.gray, stateText: 'Recebidas + realizadas', iconBg: colors.graySoft, iconColor: colors.gray, iconPaths: ICONS.calendar, plain: 'Total de ligações feitas e recebidas hoje.', onClick: onCardClick.todaySummary },
+    { title: 'Uptime do servidor', value: `${uptimeDays}d ${uptimeHours}h`, stateColor: colors.green, stateText: 'Sem reinício', iconBg: colors.greenSoft, iconColor: colors.green, iconPaths: ICONS.uptime, plain: 'Tempo que o sistema ficou funcionando sem parar.', onClick: onCardClick.health },
+    { title: 'Alertas ativos', value: String(activeAlertsCount), stateColor: activeAlertsCount > 0 ? colors.amber : colors.green, stateText: activeAlertsCount > 0 ? 'Requer atenção' : 'Tudo certo', iconBg: activeAlertsCount > 0 ? colors.amberSoft : colors.greenSoft, iconColor: activeAlertsCount > 0 ? colors.amber : colors.green, iconPaths: ICONS.warningTriangle, plain: 'Avisos que precisam da sua atenção.', onClick: onCardClick.alerts },
+    { title: 'Saúde do servidor', value: healthState.text, stateColor: healthState.color, stateText: `CPU ${health.cpuPercent}% · RAM ${health.memoryPercent}%`, iconBg: colors.graySoft, iconColor: healthState.color, iconPaths: ICONS.extensionsIcon, plain: 'Como está o desempenho geral do sistema.', onClick: onCardClick.health },
   ];
 }
