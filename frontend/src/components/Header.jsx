@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Icon, { ICONS } from './Icon.jsx';
 import Logo from './Logo.jsx';
 
@@ -7,10 +8,37 @@ function initials(name) {
   return parts.slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
 }
 
+function IconButton({ colors, onClick, title, children }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width: 36, height: 36, borderRadius: 10,
+        border: `1px solid ${hover ? colors.primary : colors.border}`,
+        background: hover ? colors.primarySoft : colors.bgCardAlt,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+        color: hover ? colors.primary : colors.textSecondary,
+        transition: 'border-color .15s ease, background .15s ease, color .15s ease, transform .15s ease, box-shadow .15s ease',
+        transform: hover ? 'translateY(-2px)' : 'none',
+        boxShadow: hover ? colors.shadow : 'none',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function Header({
   colors, companyName, pbxName, logoUrl, statusPill, connectionInfo,
   lastUpdateLabel, onRefresh, refreshing, isDark, onToggleTheme, user, onLogout, onOpenSettings,
 }) {
+  const [refreshHover, setRefreshHover] = useState(false);
+  const [logoutHover, setLogoutHover] = useState(false);
+
   return (
     <header style={{
       display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16,
@@ -39,7 +67,18 @@ export default function Header({
 
         <button
           onClick={onRefresh}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          onMouseEnter={() => setRefreshHover(true)}
+          onMouseLeave={() => setRefreshHover(false)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            border: `1px solid ${refreshHover ? colors.primary : colors.border}`,
+            background: refreshHover ? colors.primarySoft : colors.bgCardAlt,
+            color: refreshHover ? colors.primary : colors.textPrimary,
+            borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            transition: 'border-color .15s ease, background .15s ease, color .15s ease, transform .15s ease, box-shadow .15s ease',
+            transform: refreshHover ? 'translateY(-2px)' : 'none',
+            boxShadow: refreshHover ? colors.shadow : 'none',
+          }}
         >
           <span style={{ display: 'inline-flex', animation: refreshing ? 'spinIcon 0.7s linear infinite' : 'none' }}>
             <Icon paths={ICONS.refresh} size={15} strokeWidth={2.2} />
@@ -47,22 +86,14 @@ export default function Header({
           Atualizar
         </button>
 
-        <button
-          onClick={onToggleTheme}
-          title="Alternar tema"
-          style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: colors.textSecondary }}
-        >
+        <IconButton colors={colors} onClick={onToggleTheme} title="Alternar tema">
           {isDark ? <Icon paths={ICONS.moon} size={16} strokeWidth={2} /> : <Icon paths={ICONS.sun} size={16} strokeWidth={2} />}
-        </button>
+        </IconButton>
 
         {onOpenSettings && (
-          <button
-            onClick={onOpenSettings}
-            title="Configurações"
-            style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: colors.textSecondary }}
-          >
+          <IconButton colors={colors} onClick={onOpenSettings} title="Configurações">
             <Icon paths={ICONS.settings} size={16} strokeWidth={2} />
-          </button>
+          </IconButton>
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 14, borderLeft: `1px solid ${colors.border}` }}>
@@ -73,7 +104,12 @@ export default function Header({
           <button
             onClick={onLogout}
             title="Sair"
-            style={{ border: 'none', background: 'transparent', color: colors.textTertiary, cursor: 'pointer', fontSize: 12, fontWeight: 600, marginLeft: 2 }}
+            onMouseEnter={() => setLogoutHover(true)}
+            onMouseLeave={() => setLogoutHover(false)}
+            style={{
+              border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 600, marginLeft: 2,
+              color: logoutHover ? colors.red : colors.textTertiary, transition: 'color .15s ease',
+            }}
           >
             Sair
           </button>
