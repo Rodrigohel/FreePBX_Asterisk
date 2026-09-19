@@ -148,7 +148,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   });
 
   return (
-    <div style={{ background: colors.bgPage, minHeight: '100vh', transition: 'background .2s ease' }}>
+    <div style={{ background: colors.pageGradient, minHeight: '100vh', transition: 'background .2s ease' }}>
       <div style={{ maxWidth: 1440, margin: '0 auto', padding: '20px 24px 64px', display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'Manrope',sans-serif" }}>
 
         <TopBar colors={colors} demoMode={status.demoMode} />

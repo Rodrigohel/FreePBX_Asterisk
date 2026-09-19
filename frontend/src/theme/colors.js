@@ -1,11 +1,16 @@
 // Paleta baseada no design de referência (design/Dashboard.dc.html), com um
-// passe de polimento visual (sombras mais profundas, gradientes sutis,
-// estado de hover) pedido depois da aprovação inicial — não precisa mais
-// ficar em sincronia 1:1 com o protótipo estático.
+// passe de redesign visual pedido depois da aprovação inicial (cabeçalho em
+// gradiente, fundo com profundidade, cards com acento de cor) — não precisa
+// mais ficar em sincronia 1:1 com o protótipo estático.
 export function getColors(theme) {
   const dark = theme === 'dark';
   return {
     bgPage: dark ? '#0B1220' : '#F4F6FB',
+    // Fundo com leve profundidade (manchas de cor nos cantos) em vez de
+    // cor chapada — mesma base, mas com mais presença visual.
+    pageGradient: dark
+      ? 'radial-gradient(1100px circle at 8% -10%, rgba(37,99,235,0.16) 0%, transparent 55%), radial-gradient(900px circle at 100% 0%, rgba(124,58,237,0.10) 0%, transparent 50%), #0B1220'
+      : 'radial-gradient(1100px circle at 8% -10%, rgba(37,99,235,0.09) 0%, transparent 55%), radial-gradient(900px circle at 100% 0%, rgba(124,58,237,0.06) 0%, transparent 50%), #F4F6FB',
     bgCard: dark ? '#1A2436' : '#FFFFFF',
     bgCardAlt: dark ? '#141D2C' : '#F8FAFC',
     border: dark ? '#243046' : '#E2E8F0',
@@ -32,5 +37,17 @@ export function getColors(theme) {
     redSoft: dark ? 'rgba(220,38,38,0.18)' : '#FEE2E2',
     gray: '#334155',
     graySoft: dark ? 'rgba(100,116,139,0.18)' : '#F1F5F9',
+    // Cabeçalho: mesma aparência em ambos os temas — uma barra em gradiente
+    // escuro (estilo painel admin premium) com texto e controles "vidro".
+    header: {
+      gradient: 'linear-gradient(120deg, #0F172A 0%, #1E3A8A 55%, #1D2B6B 100%)',
+      text: '#F8FAFC',
+      textSecondary: '#CBD5E1',
+      textTertiary: '#93A4C3',
+      glassBg: 'rgba(255,255,255,0.08)',
+      glassBgHover: 'rgba(255,255,255,0.18)',
+      glassBorder: 'rgba(255,255,255,0.14)',
+      glassBorderHover: 'rgba(255,255,255,0.35)',
+    },
   };
 }
