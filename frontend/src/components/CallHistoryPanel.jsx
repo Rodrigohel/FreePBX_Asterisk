@@ -3,6 +3,7 @@ import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
 import { buildExtensionDirectory, describeCallParty, GROUP_LABELS } from '../utils/extensionDirectory.js';
 import { toCsv, downloadCsv } from '../utils/csv.js';
+import { generateReportPdf } from '../utils/pdf.js';
 
 const DISPOSITION_LABEL = {
   ANSWERED: 'Atendida',
@@ -62,7 +63,8 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState({ data: [], total: 0, pageSize: 25 });
   const [loading, setLoading] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [exportError, setExportError] = useState('');
 
   const directory = useMemo(() => buildExtensionDirectory(extensions), [extensions]);
@@ -88,20 +90,27 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
     search({ q, from, to, page: 1, pageSize: 25 });
   }
 
-  async function handleExport() {
-    setExporting(true);
+  async function fetchEnrichedExport() {
+    const { data } = await api.exportCallHistory({ q, from, to });
+    const enriched = data
+      .map((call) => ({ call, from: describeCallParty(call.src, directory), to: describeCallParty(call.dst, directory) }))
+      .filter(({ from: fromParty, to: toParty }) => tower === 'all' || fromParty.groupKey === tower || toParty.groupKey === tower);
+    if (enriched.length === 0) {
+      throw new Error('Nenhuma chamada encontrada nesse filtro pra exportar.');
+    }
+    return enriched;
+  }
+
+  function partyText(party) {
+    if (!party.isInternal) return party.number;
+    return `${party.label} (${party.number})${party.detail ? ` - ${party.detail}` : ''}`;
+  }
+
+  async function handleExportCsv() {
+    setExportingCsv(true);
     setExportError('');
     try {
-      const { data } = await api.exportCallHistory({ q, from, to });
-      const enriched = data
-        .map((call) => ({ call, from: describeCallParty(call.src, directory), to: describeCallParty(call.dst, directory) }))
-        .filter(({ from: fromParty, to: toParty }) => tower === 'all' || fromParty.groupKey === tower || toParty.groupKey === tower);
-
-      if (enriched.length === 0) {
-        setExportError('Nenhuma chamada encontrada nesse filtro pra exportar.');
-        return;
-      }
-
+      const enriched = await fetchEnrichedExport();
       const csvRows = enriched.map(({ call, from: fromParty, to: toParty }) => [
         new Date(call.at).toLocaleString('pt-BR'),
         call.direction === 'made' ? 'Realizada' : 'Recebida',
@@ -122,7 +131,35 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
     } catch (err) {
       setExportError(err.message || 'Não foi possível exportar.');
     } finally {
-      setExporting(false);
+      setExportingCsv(false);
+    }
+  }
+
+  async function handleExportPdf() {
+    setExportingPdf(true);
+    setExportError('');
+    try {
+      const enriched = await fetchEnrichedExport();
+      const pdfRows = enriched.map(({ call, from: fromParty, to: toParty }) => [
+        new Date(call.at).toLocaleString('pt-BR'),
+        call.direction === 'made' ? 'Realizada' : 'Recebida',
+        partyText(fromParty),
+        partyText(toParty),
+        DISPOSITION_LABEL[call.disposition] || call.disposition,
+        formatDuration(call.durationSeconds),
+      ]);
+      const towerLabel = TOWER_FILTERS.find((t) => t.value === tower)?.label || '';
+      generateReportPdf({
+        title: 'Relatório de chamadas',
+        subtitle: `${from} a ${to}${q ? ` · busca: "${q}"` : ''}${tower !== 'all' ? ` · ${towerLabel}` : ''} · ${enriched.length} chamadas`,
+        headers: ['Data/Hora', 'Direção', 'De', 'Para', 'Status', 'Duração'],
+        rows: pdfRows,
+        filename: `chamadas_${from}_a_${to}.pdf`,
+      });
+    } catch (err) {
+      setExportError(err.message || 'Não foi possível exportar.');
+    } finally {
+      setExportingPdf(false);
     }
   }
 
@@ -179,12 +216,21 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
         </select>
         <button
           type="button"
-          onClick={handleExport}
-          disabled={exporting}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, cursor: exporting ? 'default' : 'pointer' }}
+          onClick={handleExportCsv}
+          disabled={exportingCsv}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, cursor: exportingCsv ? 'default' : 'pointer' }}
         >
           <Icon paths={ICONS.chevronDown} size={13} strokeWidth={2.2} />
-          {exporting ? 'Exportando...' : 'Exportar CSV'}
+          {exportingCsv ? 'Exportando...' : 'Exportar CSV'}
+        </button>
+        <button
+          type="button"
+          onClick={handleExportPdf}
+          disabled={exportingPdf}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, cursor: exportingPdf ? 'default' : 'pointer' }}
+        >
+          <Icon paths={ICONS.chevronDown} size={13} strokeWidth={2.2} />
+          {exportingPdf ? 'Exportando...' : 'Exportar PDF'}
         </button>
       </div>
       {exportError && <div style={{ color: colors.red, fontSize: 12.5, marginTop: -6, marginBottom: 10 }}>{exportError}</div>}
