@@ -126,7 +126,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
   return (
     <div
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 1000, overflowY: 'auto' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 1000 }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
