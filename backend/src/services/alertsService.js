@@ -14,17 +14,23 @@ const upsertStmt = db.prepare(`
 `);
 const resolveBySourceStmt = db.prepare(`UPDATE alerts SET status = 'resolved' WHERE source_key = ? AND status = 'active'`);
 const getByIdStmt = db.prepare(`SELECT status, last_notified_at FROM alerts WHERE id = ?`);
-const getActiveBySourceStmt = db.prepare(`SELECT id, message, last_notified_at FROM alerts WHERE source_key = ? AND status = 'active'`);
-const touchNotifiedStmt = db.prepare(`UPDATE alerts SET last_notified_at = ? WHERE id = ?`);
+const getActiveBySourceStmt = db.prepare(`SELECT id, message, notified_active FROM alerts WHERE source_key = ? AND status = 'active'`);
+const touchNotifiedStmt = db.prepare(`UPDATE alerts SET last_notified_at = ?, notified_active = 1 WHERE id = ?`);
+const clearNotifiedStmt = db.prepare(`UPDATE alerts SET notified_active = 0 WHERE id = ?`);
 const listStmt = db.prepare(`SELECT * FROM alerts ORDER BY created_at DESC LIMIT 50`);
 const countActiveStmt = db.prepare(`SELECT COUNT(*) AS n FROM alerts WHERE status = 'active'`);
 
 const SEVERITY_EMOJI = { critical: '🔴', warning: '🟠', info: 'ℹ️' };
 
 // Ramais com conexão instável (ex.: intercomunicador em link celular)
-// podem oscilar offline/online várias vezes seguidas — sem esse intervalo
-// mínimo, cada oscilação dispararia um novo "ativo" + "resolvido" no
-// Telegram, mesmo que o problema seja o mesmo de minutos atrás.
+// podem oscilar offline/online várias vezes seguidas — o cooldown evita
+// reenviar "ativo" a cada oscilação. Mas resolver rápido (o caso mais
+// comum: cai, volta em poucos minutos) NÃO pode ficar sujeito a esse
+// mesmo cooldown, senão o "resolvido" nunca chega — a pessoa só vê o
+// aviso de offline e, ao checar o painel depois, o ramal já está online
+// de novo, parecendo um alarme falso. Por isso o resolvido é sempre
+// enviado quando o "ativo" correspondente foi de fato notificado
+// (notified_active), independente do cooldown.
 const NOTIFY_COOLDOWN_MS = 10 * 60 * 1000;
 
 function canNotify(lastNotifiedAt) {
@@ -44,16 +50,24 @@ function upsertAlert({ id, severity, message, status, source_key }) {
   const existing = getByIdStmt.get(id);
   upsertStmt.run({ id, severity, message, created_at: new Date().toISOString(), status, source_key });
   const justActivated = status === 'active' && (!existing || existing.status === 'resolved');
-  if (justActivated && canNotify(existing?.last_notified_at)) {
-    notify(id, `${SEVERITY_EMOJI[severity] || '⚠️'} ${message}`);
+  if (justActivated) {
+    if (canNotify(existing?.last_notified_at)) {
+      notify(id, `${SEVERITY_EMOJI[severity] || '⚠️'} ${message}`);
+    } else {
+      // Reativou dentro do cooldown (flapping): fica quieto, e marca que
+      // este período ativo não foi notificado, pra não mandar um
+      // "resolvido" órfão sem o "ativo" correspondente.
+      clearNotifiedStmt.run(id);
+    }
   }
 }
 
 function resolveAlert(sourceKey) {
   const activeAlert = getActiveBySourceStmt.get(sourceKey);
   const info = resolveBySourceStmt.run(sourceKey);
-  if (info.changes > 0 && activeAlert && canNotify(activeAlert.last_notified_at)) {
+  if (info.changes > 0 && activeAlert && activeAlert.notified_active) {
     notify(activeAlert.id, `✅ Resolvido: ${activeAlert.message}`);
+    clearNotifiedStmt.run(activeAlert.id);
   }
 }
 

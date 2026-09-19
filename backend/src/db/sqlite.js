@@ -26,7 +26,8 @@ db.exec(`
     created_at TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',
     source_key TEXT,
-    last_notified_at TEXT
+    last_notified_at TEXT,
+    notified_active INTEGER NOT NULL DEFAULT 0
   );
 
   -- Último estado conhecido de cada ramal, persistido para sobreviver a
@@ -66,6 +67,9 @@ db.exec(`
 const alertsColumns = db.prepare('PRAGMA table_info(alerts)').all().map((c) => c.name);
 if (!alertsColumns.includes('last_notified_at')) {
   db.exec('ALTER TABLE alerts ADD COLUMN last_notified_at TEXT');
+}
+if (!alertsColumns.includes('notified_active')) {
+  db.exec('ALTER TABLE alerts ADD COLUMN notified_active INTEGER NOT NULL DEFAULT 0');
 }
 
 // Idem para `role`: usuários criados antes desta versão viram 'admin' por
