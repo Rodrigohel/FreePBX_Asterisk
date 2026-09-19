@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getColors } from '../theme/colors.js';
 import { api, connectLiveSocket } from '../api/client.js';
-import Header from '../components/Header.jsx';
+import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
+import Icon, { ICONS } from '../components/Icon.jsx';
 import HeroBanner, { buildHeroBanner } from '../components/HeroBanner.jsx';
 import IndicatorCards, { buildIndicatorCards } from '../components/IndicatorCards.jsx';
 import ActivityChart from '../components/ActivityChart.jsx';
@@ -33,10 +34,23 @@ function reveal(index) {
   return { animation: 'fadeInUp .5s ease both', animationDelay: `${index * 0.06}s` };
 }
 
+function firstName(displayName) {
+  if (!displayName) return '';
+  return displayName.trim().split(/\s+/)[0];
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
 export default function Dashboard({ user, onLogout, settings, reloadSettings }) {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
   const [range, setRange] = useState('today');
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshHover, setRefreshHover] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [showSettings, setShowSettings] = useState(false);
 
@@ -52,11 +66,13 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   const [favorites, setFavorites] = useState([]);
   const [selectedExtension, setSelectedExtension] = useState(null);
 
+  const topRef = useRef(null);
   const extensionsSectionRef = useRef(null);
   const activeCallsSectionRef = useRef(null);
   const alertsSectionRef = useRef(null);
   const healthSectionRef = useRef(null);
   const todaySummarySectionRef = useRef(null);
+  const callHistorySectionRef = useRef(null);
 
   const colors = getColors(theme);
   const isDark = theme === 'dark';
@@ -147,28 +163,66 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
     },
   });
 
+  const navItems = [
+    { key: 'overview', label: 'Visão geral', icon: ICONS.extensionsIcon, onClick: () => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+    { key: 'extensions', label: 'Ramais', icon: ICONS.extensionsTotal, onClick: () => scrollToSection(extensionsSectionRef) },
+    { key: 'calls', label: 'Chamadas', icon: ICONS.phoneActive, onClick: () => scrollToSection(activeCallsSectionRef) },
+    { key: 'alerts', label: 'Alertas', icon: ICONS.warningTriangle, onClick: () => scrollToSection(alertsSectionRef) },
+    { key: 'health', label: 'Servidor', icon: ICONS.server, onClick: () => scrollToSection(healthSectionRef) },
+    { key: 'summary', label: 'Resumo do dia', icon: ICONS.calendar, onClick: () => scrollToSection(todaySummarySectionRef) },
+    { key: 'history', label: 'Histórico', icon: ICONS.clock, onClick: () => scrollToSection(callHistorySectionRef) },
+  ];
+
   return (
-    <div style={{ background: colors.pageGradient, minHeight: '100vh', transition: 'background .2s ease' }}>
-      <div style={{ maxWidth: 1440, margin: '0 auto', padding: '20px 24px 64px', display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'Manrope',sans-serif" }}>
+    <div style={{ background: colors.pageGradient, minHeight: '100vh', display: 'flex', transition: 'background .2s ease' }}>
+      <Sidebar
+        colors={colors}
+        companyName={settings.companyName}
+        pbxName={settings.pbxName}
+        logoUrl={settings.logoUrl}
+        statusPill={statusPill}
+        navItems={navItems}
+        isDark={isDark}
+        onToggleTheme={() => setTheme(isDark ? 'light' : 'dark')}
+        user={user}
+        onLogout={onLogout}
+        onOpenSettings={user?.role === 'admin' ? () => setShowSettings(true) : undefined}
+      />
+
+      <div style={{ flex: 1, minWidth: 0, padding: '24px 32px 64px', display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'Manrope',sans-serif" }}>
 
         <TopBar colors={colors} demoMode={status.demoMode} />
 
-        <Header
-          colors={colors}
-          companyName={settings.companyName}
-          pbxName={settings.pbxName}
-          logoUrl={settings.logoUrl}
-          statusPill={statusPill}
-          connectionInfo={{ color: status.connection.connected ? colors.green : colors.red, label: status.connection.label }}
-          lastUpdateLabel={lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-          onRefresh={handleRefresh}
-          refreshing={refreshing}
-          isDark={isDark}
-          onToggleTheme={() => setTheme(isDark ? 'light' : 'dark')}
-          user={user}
-          onLogout={onLogout}
-          onOpenSettings={user?.role === 'admin' ? () => setShowSettings(true) : undefined}
-        />
+        <div ref={topRef} style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, scrollMarginTop: 20 }}>
+          <div>
+            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 700, color: colors.textPrimary, letterSpacing: '-0.01em' }}>
+              {greeting()}, {firstName(user?.displayName) || 'tudo bem'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: colors.textSecondary, marginTop: 5 }}>
+              <Icon paths={ICONS.phoneRow} size={13} color={status.connection.connected ? colors.green : colors.red} strokeWidth={2.2} />
+              {status.connection.label} · Atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+
+          <button
+            onClick={handleRefresh}
+            onMouseEnter={() => setRefreshHover(true)}
+            onMouseLeave={() => setRefreshHover(false)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7, border: `1px solid ${colors.border}`,
+              background: refreshHover ? colors.primary : colors.bgCard, color: refreshHover ? '#fff' : colors.textPrimary,
+              borderRadius: 12, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+              transition: 'transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease',
+              transform: refreshHover ? 'translateY(-2px)' : 'none',
+              boxShadow: refreshHover ? colors.shadowHover : colors.shadow,
+            }}
+          >
+            <span style={{ display: 'inline-flex', animation: refreshing ? 'spinIcon 0.7s linear infinite' : 'none' }}>
+              <Icon paths={ICONS.refresh} size={15} strokeWidth={2.4} />
+            </span>
+            Atualizar
+          </button>
+        </div>
 
         <HeroBanner colors={colors} banner={heroBanner} />
 
@@ -179,7 +233,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
         </div>
 
         <div style={{ ...reveal(2), display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
-          <div ref={extensionsSectionRef}>
+          <div ref={extensionsSectionRef} style={{ scrollMarginTop: 20 }}>
             <ExtensionsPanel
               colors={colors}
               extensions={extensions}
@@ -190,21 +244,21 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
               onSelectExtension={setSelectedExtension}
             />
           </div>
-          <div ref={activeCallsSectionRef}>
+          <div ref={activeCallsSectionRef} style={{ scrollMarginTop: 20 }}>
             <ActiveCallsPanel colors={colors} calls={activeCalls} />
           </div>
         </div>
 
         <div style={{ ...reveal(3), display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
-          <div ref={alertsSectionRef}>
+          <div ref={alertsSectionRef} style={{ scrollMarginTop: 20 }}>
             <AlertsPanel colors={colors} alerts={alerts} />
           </div>
-          <div ref={healthSectionRef}>
+          <div ref={healthSectionRef} style={{ scrollMarginTop: 20 }}>
             <ServerHealthPanel colors={colors} health={health} />
           </div>
         </div>
 
-        <div ref={todaySummarySectionRef} style={reveal(4)}>
+        <div ref={todaySummarySectionRef} style={{ ...reveal(4), scrollMarginTop: 20 }}>
           <TodaySummaryPanel colors={colors} summary={todaySummary} />
         </div>
 
@@ -216,7 +270,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
           <FailuresReportPanel colors={colors} extensions={extensions} />
         </div>
 
-        <div style={reveal(7)}>
+        <div ref={callHistorySectionRef} style={{ ...reveal(7), scrollMarginTop: 20 }}>
           <CallHistoryPanel colors={colors} extensions={extensions} />
         </div>
 
