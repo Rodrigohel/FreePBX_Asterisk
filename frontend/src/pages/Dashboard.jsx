@@ -187,7 +187,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
         onToggleTheme={() => setTheme(isDark ? 'light' : 'dark')}
         user={user}
         onLogout={onLogout}
-        onOpenSettings={user?.role === 'admin' ? () => setShowSettings(true) : undefined}
+        onOpenSettings={user?.role === 'admin' ? () => { setShowSettings(true); setSidebarOpen(false); } : undefined}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

@@ -127,23 +127,30 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ width: '100%', maxWidth: 440, background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '28px 26px', boxShadow: colors.shadow, position: 'relative', margin: '20px 0' }}
+        style={{ width: '100%', maxWidth: 440, background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, boxShadow: colors.shadow, position: 'relative', margin: '20px 0' }}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fechar"
-          style={{ position: 'absolute', top: 14, right: 14, border: 'none', background: 'transparent', color: colors.textTertiary, fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
-        >
-          ×
-        </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <Icon paths={ICONS.settings} size={20} color={colors.primary} />
-          <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, color: colors.textPrimary }}>Configurações</div>
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 2, background: colors.bgCard, borderRadius: '16px 16px 0 0',
+          borderBottom: `1px solid ${colors.border}`, padding: '20px 26px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <Icon paths={ICONS.settings} size={20} color={colors.primary} />
+            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, color: colors.textPrimary }}>Configurações</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            style={{
+              width: 32, height: 32, borderRadius: 9, border: `1px solid ${colors.border}`, background: colors.bgCardAlt,
+              color: colors.textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            <Icon paths={ICONS.close} size={15} strokeWidth={2.2} />
+          </button>
         </div>
 
-        <form onSubmit={handleSave}>
+        <form onSubmit={handleSave} style={{ padding: '20px 26px 26px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
             <Logo colors={colors} logoUrl={logoUrl} size={56} />
             <div>
@@ -198,6 +205,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
           </button>
         </form>
 
+        <div style={{ padding: '0 26px 26px' }}>
         <div style={sectionTitleStyle(colors)}>Usuários do painel</div>
 
         {users.length > 0 && (
@@ -265,6 +273,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
             {addingUser ? 'Criando...' : 'Adicionar usuário'}
           </button>
         </form>
+        </div>
       </div>
     </div>
   );
