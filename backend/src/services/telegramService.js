@@ -1,9 +1,10 @@
-import { config } from '../config.js';
+import { getSettings } from './settingsService.js';
 
-// Notificação de alertas via Telegram — opcional, só ativa se
-// TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID estiverem definidos no .env.
+// Notificação de alertas via Telegram — opcional, só ativa se o token e o
+// chat_id estiverem configurados (tela de Configurações, ou TELEGRAM_BOT_TOKEN
+// / TELEGRAM_CHAT_ID no .env como valor inicial).
 export async function sendTelegramMessage(text) {
-  const { botToken, chatId } = config.telegram;
+  const { telegramBotToken: botToken, telegramChatId: chatId } = getSettings();
   if (!botToken || !chatId) return;
 
   try {

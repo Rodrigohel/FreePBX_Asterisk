@@ -41,17 +41,12 @@ export const config = {
 
   forceMock: bool(process.env.FORCE_MOCK, false),
 
-  alerts: {
-    extensionOfflineMinutes: Number(process.env.ALERT_EXTENSION_OFFLINE_MINUTES || 120),
-    diskUsagePercent: Number(process.env.ALERT_DISK_USAGE_PERCENT || 80),
-  },
-
-  // Opcional: notificação de alertas via Telegram. Deixe em branco pra
-  // desativar (o painel continua funcionando normalmente sem isso).
-  telegram: {
-    botToken: process.env.TELEGRAM_BOT_TOKEN || '',
-    chatId: process.env.TELEGRAM_CHAT_ID || '',
-  },
+  // Limites de alerta (ramal offline há quanto tempo, disco cheio) e as
+  // credenciais do Telegram são configuráveis em runtime pela tela de
+  // Configurações do painel (ver settingsService.js) — as variáveis de
+  // ambiente ALERT_EXTENSION_OFFLINE_MINUTES, ALERT_DISK_USAGE_PERCENT,
+  // TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID só valem como valor inicial, até
+  // alguém salvar um valor pela tela.
 
   monitorIntervalMs: Number(process.env.MONITOR_INTERVAL_MS || 15000),
 

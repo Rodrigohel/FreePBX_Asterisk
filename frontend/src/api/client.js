@@ -83,6 +83,9 @@ export const api = {
     }
     return res.json();
   },
+  users: () => request('/api/users'),
+  createUser: (data) => request('/api/users', { method: 'POST', body: JSON.stringify(data) }),
+  deleteUser: (id) => request(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
 export function connectLiveSocket(onMessage) {

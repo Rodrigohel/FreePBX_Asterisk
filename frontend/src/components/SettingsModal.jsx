@@ -1,17 +1,51 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
 import Logo from './Logo.jsx';
 
-export default function SettingsModal({ colors, settings, onClose, onSaved }) {
+const inputStyle = (colors) => ({
+  width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${colors.border}`,
+  marginBottom: 14, fontSize: 14, fontFamily: 'inherit', background: colors.bgCardAlt, color: colors.textPrimary,
+});
+const labelStyle = (colors) => ({ display: 'block', fontSize: 12.5, fontWeight: 600, color: colors.textSecondary, marginBottom: 6 });
+const sectionTitleStyle = (colors) => ({ fontSize: 12.5, fontWeight: 700, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, margin: '18px 0 10px' });
+
+export default function SettingsModal({ colors, settings, onClose, onSaved, currentUsername }) {
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [pbxName, setPbxName] = useState(settings.pbxName);
   const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
+  const [offlineMinutes, setOfflineMinutes] = useState('120');
+  const [diskPercent, setDiskPercent] = useState('80');
+  const [telegramBotToken, setTelegramBotToken] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+
+  const [users, setUsers] = useState([]);
+  const [newUsername, setNewUsername] = useState('');
+  const [newDisplayName, setNewDisplayName] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [userError, setUserError] = useState('');
+  const [addingUser, setAddingUser] = useState(false);
+
+  useEffect(() => {
+    // GET /api/settings (autenticado) traz o objeto completo, com os campos
+    // sensíveis que o endpoint público (usado antes do login) não expõe.
+    api.settings().then((full) => {
+      setOfflineMinutes(String(full.alertExtensionOfflineMinutes ?? '120'));
+      setDiskPercent(String(full.alertDiskUsagePercent ?? '80'));
+      setTelegramBotToken(full.telegramBotToken || '');
+      setTelegramChatId(full.telegramChatId || '');
+    }).catch(() => {});
+    loadUsers();
+  }, []);
+
+  function loadUsers() {
+    api.users().then((res) => setUsers(res.data)).catch(() => {});
+  }
 
   async function handleSave(e) {
     e.preventDefault();
@@ -19,7 +53,12 @@ export default function SettingsModal({ colors, settings, onClose, onSaved }) {
     setError('');
     setMessage('');
     try {
-      await api.updateSettings({ companyName, pbxName });
+      await api.updateSettings({
+        companyName, pbxName,
+        alertExtensionOfflineMinutes: offlineMinutes,
+        alertDiskUsagePercent: diskPercent,
+        telegramBotToken, telegramChatId,
+      });
       setMessage('Salvo!');
       onSaved?.();
       setTimeout(onClose, 600);
@@ -49,15 +88,41 @@ export default function SettingsModal({ colors, settings, onClose, onSaved }) {
     }
   }
 
+  async function handleAddUser(e) {
+    e.preventDefault();
+    setUserError('');
+    setAddingUser(true);
+    try {
+      await api.createUser({ username: newUsername, displayName: newDisplayName, password: newPassword });
+      setNewUsername('');
+      setNewDisplayName('');
+      setNewPassword('');
+      loadUsers();
+    } catch (err) {
+      setUserError(err.message || 'Não foi possível criar o usuário.');
+    } finally {
+      setAddingUser(false);
+    }
+  }
+
+  async function handleDeleteUser(id) {
+    setUserError('');
+    try {
+      await api.deleteUser(id);
+      loadUsers();
+    } catch (err) {
+      setUserError(err.message || 'Não foi possível remover o usuário.');
+    }
+  }
+
   return (
     <div
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 1000 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 1000, overflowY: 'auto' }}
     >
-      <form
+      <div
         onClick={(e) => e.stopPropagation()}
-        onSubmit={handleSave}
-        style={{ width: '100%', maxWidth: 420, background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '28px 26px', boxShadow: colors.shadow, position: 'relative' }}
+        style={{ width: '100%', maxWidth: 440, background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '28px 26px', boxShadow: colors.shadow, position: 'relative', margin: '20px 0' }}
       >
         <button
           type="button"
@@ -73,48 +138,118 @@ export default function SettingsModal({ colors, settings, onClose, onSaved }) {
           <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, color: colors.textPrimary }}>Configurações</div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-          <Logo colors={colors} logoUrl={logoUrl} size={56} />
-          <div>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              style={{ border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: uploading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              <Icon paths={ICONS.upload} size={14} />
-              {uploading ? 'Enviando...' : 'Trocar logo'}
-            </button>
-            <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 6 }}>PNG, JPG ou SVG, até 2MB</div>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+        <form onSubmit={handleSave}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+            <Logo colors={colors} logoUrl={logoUrl} size={56} />
+            <div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                style={{ border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: uploading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <Icon paths={ICONS.upload} size={14} />
+                {uploading ? 'Enviando...' : 'Trocar logo'}
+              </button>
+              <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 6 }}>PNG, JPG ou SVG, até 2MB</div>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+            </div>
           </div>
-        </div>
 
-        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: colors.textSecondary, marginBottom: 6 }}>Nome (empresa / condomínio)</label>
-        <input
-          value={companyName}
-          onChange={(e) => setCompanyName(e.target.value)}
-          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${colors.border}`, marginBottom: 14, fontSize: 14, fontFamily: 'inherit' }}
-        />
+          <label style={labelStyle(colors)}>Nome (empresa / condomínio)</label>
+          <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle(colors)} />
 
-        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: colors.textSecondary, marginBottom: 6 }}>Nome do sistema / PBX</label>
-        <input
-          value={pbxName}
-          onChange={(e) => setPbxName(e.target.value)}
-          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${colors.border}`, marginBottom: 18, fontSize: 14, fontFamily: 'inherit' }}
-        />
+          <label style={labelStyle(colors)}>Nome do sistema / PBX</label>
+          <input value={pbxName} onChange={(e) => setPbxName(e.target.value)} style={inputStyle(colors)} />
 
-        {error && <div style={{ color: colors.red, fontSize: 13, marginBottom: 14 }}>{error}</div>}
-        {message && !error && <div style={{ color: colors.green, fontSize: 13, marginBottom: 14 }}>{message}</div>}
+          <div style={sectionTitleStyle(colors)}>Alertas</div>
 
-        <button
-          type="submit"
-          disabled={saving}
-          style={{ width: '100%', padding: '11px 12px', borderRadius: 10, border: 'none', background: colors.primary, color: '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
-        >
-          {saving ? 'Salvando...' : 'Salvar'}
-        </button>
-      </form>
+          <label style={labelStyle(colors)}>Ramal considerado offline após (minutos)</label>
+          <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(e.target.value)} style={inputStyle(colors)} />
+
+          <label style={labelStyle(colors)}>Alerta de disco cheio acima de (%)</label>
+          <input type="number" min="1" max="100" value={diskPercent} onChange={(e) => setDiskPercent(e.target.value)} style={inputStyle(colors)} />
+
+          <div style={sectionTitleStyle(colors)}>Notificação por Telegram (opcional)</div>
+          <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: -4, marginBottom: 12 }}>
+            Deixe em branco para não notificar. Fale com o @BotFather no Telegram para criar um bot.
+          </div>
+
+          <label style={labelStyle(colors)}>Bot Token</label>
+          <input value={telegramBotToken} onChange={(e) => setTelegramBotToken(e.target.value)} placeholder="123456789:AA..." style={inputStyle(colors)} />
+
+          <label style={labelStyle(colors)}>Chat ID</label>
+          <input value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)} placeholder="8873836707" style={inputStyle(colors)} />
+
+          {error && <div style={{ color: colors.red, fontSize: 13, marginBottom: 14 }}>{error}</div>}
+          {message && !error && <div style={{ color: colors.green, fontSize: 13, marginBottom: 14 }}>{message}</div>}
+
+          <button
+            type="submit"
+            disabled={saving}
+            style={{ width: '100%', padding: '11px 12px', borderRadius: 10, border: 'none', background: colors.primary, color: '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
+          >
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
+        </form>
+
+        <div style={sectionTitleStyle(colors)}>Usuários do painel</div>
+
+        {users.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            {users.map((u) => (
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: colors.textPrimary }}>{u.displayName}</span>
+                <span style={{ color: colors.textTertiary, fontSize: 12 }}>@{u.username}</span>
+                {u.username !== currentUsername && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteUser(u.id)}
+                    style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Remover
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={handleAddUser}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <input
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              placeholder="Usuário (login)"
+              required
+              style={{ ...inputStyle(colors), flex: '1 1 120px', marginBottom: 0 }}
+            />
+            <input
+              value={newDisplayName}
+              onChange={(e) => setNewDisplayName(e.target.value)}
+              placeholder="Nome de exibição"
+              style={{ ...inputStyle(colors), flex: '1 1 120px', marginBottom: 0 }}
+            />
+          </div>
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Senha (mín. 6 caracteres)"
+            required
+            minLength={6}
+            style={inputStyle(colors)}
+          />
+          {userError && <div style={{ color: colors.red, fontSize: 13, marginBottom: 10 }}>{userError}</div>}
+          <button
+            type="submit"
+            disabled={addingUser}
+            style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, fontWeight: 700, fontSize: 13, cursor: addingUser ? 'default' : 'pointer' }}
+          >
+            {addingUser ? 'Criando...' : 'Adicionar usuário'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
