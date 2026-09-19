@@ -46,6 +46,13 @@ export const config = {
     diskUsagePercent: Number(process.env.ALERT_DISK_USAGE_PERCENT || 80),
   },
 
+  // Opcional: notificação de alertas via Telegram. Deixe em branco pra
+  // desativar (o painel continua funcionando normalmente sem isso).
+  telegram: {
+    botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+    chatId: process.env.TELEGRAM_CHAT_ID || '',
+  },
+
   monitorIntervalMs: Number(process.env.MONITOR_INTERVAL_MS || 15000),
 
   // Painel público (sem login): cada card pode ser ligado/desligado
