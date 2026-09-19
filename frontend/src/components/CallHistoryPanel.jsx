@@ -144,18 +144,22 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
           <div style={{ padding: '16px 2px', fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>Nenhuma chamada encontrada.</div>
         )}
         {!loading && rows.map(({ call, from: fromParty, to: toParty }, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 2px', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
-            <Icon paths={call.direction === 'made' ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
-            <div style={{ flex: '1 1 120px', minWidth: 0 }}>
-              <PartyLabel colors={colors} party={fromParty} align="left" />
+          <div key={i} style={{ padding: '10px 2px', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon paths={call.direction === 'made' ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
+              <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                <PartyLabel colors={colors} party={fromParty} align="left" />
+              </div>
+              <Icon paths={['M5 12h14', 'M13 6l6 6-6 6']} size={12} color={colors.textTertiary} strokeWidth={2} />
+              <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                <PartyLabel colors={colors} party={toParty} align="left" />
+              </div>
             </div>
-            <Icon paths={['M5 12h14', 'M13 6l6 6-6 6']} size={13} color={colors.textTertiary} strokeWidth={2} />
-            <div style={{ flex: '1 1 120px', minWidth: 0 }}>
-              <PartyLabel colors={colors} party={toParty} align="left" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 5, paddingLeft: 21 }}>
+              <span style={{ color: dispositionColor(colors, call.disposition), fontWeight: 600, fontSize: 12 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
+              <span style={{ color: colors.textTertiary, fontSize: 12 }}>{formatDuration(call.durationSeconds)}</span>
+              <span style={{ color: colors.textTertiary, fontSize: 12, marginLeft: 'auto' }}>{new Date(call.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
             </div>
-            <span style={{ color: dispositionColor(colors, call.disposition), fontWeight: 600, fontSize: 12, flexShrink: 0 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
-            <span style={{ color: colors.textTertiary, fontSize: 12, width: 48, textAlign: 'right', flexShrink: 0 }}>{formatDuration(call.durationSeconds)}</span>
-            <span style={{ color: colors.textTertiary, fontSize: 12, width: 116, textAlign: 'right', flexShrink: 0 }}>{new Date(call.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
           </div>
         ))}
       </div>
