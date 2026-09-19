@@ -13,7 +13,7 @@ const upsertStmt = db.prepare(`
   ON CONFLICT(id) DO UPDATE SET status = @status, message = @message
 `);
 const resolveBySourceStmt = db.prepare(`UPDATE alerts SET status = 'resolved' WHERE source_key = ? AND status = 'active'`);
-const getByIdStmt = db.prepare(`SELECT status, last_notified_at FROM alerts WHERE id = ?`);
+const getByIdStmt = db.prepare(`SELECT status, last_notified_at, notified_active FROM alerts WHERE id = ?`);
 const getActiveBySourceStmt = db.prepare(`SELECT id, message, notified_active FROM alerts WHERE source_key = ? AND status = 'active'`);
 const touchNotifiedStmt = db.prepare(`UPDATE alerts SET last_notified_at = ?, notified_active = 1 WHERE id = ?`);
 const clearNotifiedStmt = db.prepare(`UPDATE alerts SET notified_active = 0 WHERE id = ?`);
@@ -33,9 +33,9 @@ const SEVERITY_EMOJI = { critical: '🔴', warning: '🟠', info: 'ℹ️' };
 // (notified_active), independente do cooldown.
 const NOTIFY_COOLDOWN_MS = 10 * 60 * 1000;
 
-function canNotify(lastNotifiedAt) {
+function canNotify(lastNotifiedAt, intervalMs) {
   if (!lastNotifiedAt) return true;
-  return Date.now() - new Date(lastNotifiedAt).getTime() >= NOTIFY_COOLDOWN_MS;
+  return Date.now() - new Date(lastNotifiedAt).getTime() >= intervalMs;
 }
 
 function notify(id, text) {
@@ -43,15 +43,18 @@ function notify(id, text) {
   touchNotifiedStmt.run(new Date().toISOString(), id);
 }
 
-// Só notifica quando o alerta vira ativo pela primeira vez (ou é
-// reativado depois de resolvido) — sem isso o Telegram tocaria a cada
-// verificação (MONITOR_INTERVAL_MS) enquanto o problema persistir.
-function upsertAlert({ id, severity, message, status, source_key }) {
+// Notifica quando o alerta vira ativo pela primeira vez (ou é reativado
+// depois de resolvido), sujeito a um cooldown curto fixo só pra absorver
+// flapping (reativações rapidíssimas). Enquanto o alerta continuar ativo,
+// manda um lembrete a cada `reminderIntervalMs` (configurável em
+// Configurações; 0 desativa os lembretes) — sem isso o problema ficaria
+// mudo até ser resolvido, mesmo que dure horas.
+function upsertAlert({ id, severity, message, status, source_key }, reminderIntervalMs = 0) {
   const existing = getByIdStmt.get(id);
   upsertStmt.run({ id, severity, message, created_at: new Date().toISOString(), status, source_key });
   const justActivated = status === 'active' && (!existing || existing.status === 'resolved');
   if (justActivated) {
-    if (canNotify(existing?.last_notified_at)) {
+    if (canNotify(existing?.last_notified_at, NOTIFY_COOLDOWN_MS)) {
       notify(id, `${SEVERITY_EMOJI[severity] || '⚠️'} ${message}`);
     } else {
       // Reativou dentro do cooldown (flapping): fica quieto, e marca que
@@ -59,6 +62,11 @@ function upsertAlert({ id, severity, message, status, source_key }) {
       // "resolvido" órfão sem o "ativo" correspondente.
       clearNotifiedStmt.run(id);
     }
+  } else if (
+    status === 'active' && existing && existing.status === 'active' && existing.notified_active &&
+    reminderIntervalMs > 0 && canNotify(existing.last_notified_at, reminderIntervalMs)
+  ) {
+    notify(id, `🔁 Ainda ativo: ${message}`);
   }
 }
 
@@ -104,6 +112,8 @@ export async function runAlertChecks() {
   const settings = getSettings();
   const offlineMinutes = Number(settings.alertExtensionOfflineMinutes) || 120;
   const diskPercent = Number(settings.alertDiskUsagePercent) || 80;
+  const reminderMinutes = Number(settings.alertReminderIntervalMinutes) || 0;
+  const reminderIntervalMs = reminderMinutes > 0 ? reminderMinutes * 60 * 1000 : 0;
 
   try {
     const { data: extensions, source } = await getExtensions();
@@ -118,7 +128,7 @@ export async function runAlertChecks() {
             const message = lastSeen
               ? `Ramal ${ext.number} (${ext.name}) offline desde ${formatDateTime(lastSeen)} — ${formatDuration(offlineFor)} sem conexão`
               : `Ramal ${ext.number} (${ext.name}) offline há mais de ${offlineMinutes} minutos (sem registro de última conexão)`;
-            upsertAlert({ id: sourceKey, severity: 'critical', message, status: 'active', source_key: sourceKey });
+            upsertAlert({ id: sourceKey, severity: 'critical', message, status: 'active', source_key: sourceKey }, reminderIntervalMs);
           }
         } else {
           resolveAlert(sourceKey);
@@ -140,7 +150,7 @@ export async function runAlertChecks() {
           message: `Uso de disco acima de ${diskPercent}% (atual: ${health.diskPercent}%)`,
           status: 'active',
           source_key: sourceKey,
-        });
+        }, reminderIntervalMs);
       } else {
         resolveAlert(sourceKey);
       }

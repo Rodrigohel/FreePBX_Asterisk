@@ -35,7 +35,8 @@ settingsRouter.get('/', (req, res) => {
 
 settingsRouter.put('/', (req, res) => {
   const {
-    companyName, pbxName, alertExtensionOfflineMinutes, alertDiskUsagePercent, telegramBotToken, telegramChatId,
+    companyName, pbxName, alertExtensionOfflineMinutes, alertDiskUsagePercent, alertReminderIntervalMinutes,
+    telegramBotToken, telegramChatId,
   } = req.body || {};
   const updates = {};
 
@@ -56,6 +57,14 @@ settingsRouter.put('/', (req, res) => {
       return res.status(400).json({ error: 'Uso de disco deve ser uma porcentagem entre 1 e 100.' });
     }
     updates.alertDiskUsagePercent = n;
+  }
+
+  if (alertReminderIntervalMinutes !== undefined) {
+    const n = Number(alertReminderIntervalMinutes);
+    if (!Number.isFinite(n) || n < 0) {
+      return res.status(400).json({ error: 'Intervalo de lembrete deve ser um número de minutos (0 desativa).' });
+    }
+    updates.alertReminderIntervalMinutes = n;
   }
 
   if (typeof telegramBotToken === 'string') updates.telegramBotToken = telegramBotToken.trim();

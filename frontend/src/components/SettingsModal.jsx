@@ -16,6 +16,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
   const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
   const [offlineMinutes, setOfflineMinutes] = useState('120');
   const [diskPercent, setDiskPercent] = useState('80');
+  const [reminderMinutes, setReminderMinutes] = useState('60');
   const [telegramBotToken, setTelegramBotToken] = useState('');
   const [telegramChatId, setTelegramChatId] = useState('');
   const [saving, setSaving] = useState(false);
@@ -38,6 +39,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
     api.settings().then((full) => {
       setOfflineMinutes(String(full.alertExtensionOfflineMinutes ?? '120'));
       setDiskPercent(String(full.alertDiskUsagePercent ?? '80'));
+      setReminderMinutes(String(full.alertReminderIntervalMinutes ?? '60'));
       setTelegramBotToken(full.telegramBotToken || '');
       setTelegramChatId(full.telegramChatId || '');
     }).catch(() => {});
@@ -58,6 +60,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
         companyName, pbxName,
         alertExtensionOfflineMinutes: offlineMinutes,
         alertDiskUsagePercent: diskPercent,
+        alertReminderIntervalMinutes: reminderMinutes,
         telegramBotToken, telegramChatId,
       });
       setMessage('Salvo!');
@@ -127,7 +130,10 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ width: '100%', maxWidth: 440, background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, boxShadow: colors.shadow, position: 'relative', margin: '20px 0' }}
+        style={{
+          width: '100%', maxWidth: 440, maxHeight: '85vh', overflowY: 'auto', background: colors.bgCard,
+          border: `1px solid ${colors.border}`, borderRadius: 16, boxShadow: colors.shadow, position: 'relative', margin: '20px 0',
+        }}
       >
         <div style={{
           position: 'sticky', top: 0, zIndex: 2, background: colors.bgCard, borderRadius: '16px 16px 0 0',
@@ -178,6 +184,12 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
 
           <label style={labelStyle(colors)}>Ramal considerado offline após (minutos)</label>
           <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(e.target.value)} style={inputStyle(colors)} />
+
+          <label style={labelStyle(colors)}>Repetir lembrete a cada (minutos, 0 = não repetir)</label>
+          <input type="number" min="0" value={reminderMinutes} onChange={(e) => setReminderMinutes(e.target.value)} style={inputStyle(colors)} />
+          <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: -10, marginBottom: 14 }}>
+            Enquanto o ramal continuar offline, manda um novo aviso no Telegram nesse intervalo.
+          </div>
 
           <label style={labelStyle(colors)}>Alerta de disco cheio acima de (%)</label>
           <input type="number" min="1" max="100" value={diskPercent} onChange={(e) => setDiskPercent(e.target.value)} style={inputStyle(colors)} />
