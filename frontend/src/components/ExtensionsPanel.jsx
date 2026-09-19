@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts';
 import { ICONS } from './Icon.jsx';
+import { classifyExtension, GROUP_LABELS } from '../utils/extensionDirectory.js';
 
 const STATE_LABEL = {
   free: 'Livre',
@@ -17,41 +18,6 @@ const DONUT_NAME_TO_STATE = {
   'Offline': 'offline',
   'Desconhecido': 'unknown',
 };
-
-const COMMON_AREA_KEYWORDS = ['portaria', 'porteiro', 'academia', 'salão', 'salao', 'festas', 'gourmet', 'acesso'];
-
-const GROUP_LABELS = {
-  torreA: 'Torre A',
-  blocoB: 'Bloco B',
-  common: 'Portaria e áreas comuns',
-  other: 'Outros',
-};
-
-// Convenção do condomínio: ramais que começam com 1 são da Torre A
-// (andar+unidade em seguida), com 2 são do Bloco B, e o restante
-// (porteiros, academia, salão de festas, espaço gourmet) fica em "outros".
-function classifyExtension(ext) {
-  const name = (ext.name || '').toLowerCase();
-  if (COMMON_AREA_KEYWORDS.some((kw) => name.includes(kw))) {
-    return { key: 'common', unitLabel: null };
-  }
-  const num = ext.number || '';
-  if (num.startsWith('1') && num.length >= 3) {
-    return { key: 'torreA', unitLabel: formatUnitLabel(num) };
-  }
-  if (num.startsWith('2') && num.length >= 3) {
-    return { key: 'blocoB', unitLabel: formatUnitLabel(num) };
-  }
-  return { key: 'other', unitLabel: null };
-}
-
-function formatUnitLabel(num) {
-  const rest = num.slice(1);
-  if (rest.length < 3) return null;
-  const floor = rest.slice(0, rest.length - 2);
-  const unit = rest.slice(-2);
-  return `Andar ${floor} · Unid. ${unit}`;
-}
 
 function offlineDurationMs(ext) {
   if (ext.state !== 'offline') return null;

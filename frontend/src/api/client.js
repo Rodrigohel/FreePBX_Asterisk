@@ -57,6 +57,7 @@ export const api = {
   activeCalls: () => request('/api/calls/active'),
   callsSummary: (range) => request(`/api/calls/summary?range=${range}`),
   todaySummary: () => request('/api/calls/today-summary'),
+  missedCallsToday: () => request('/api/calls/missed-today'),
   callsHistory: (params = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
     return request(`/api/calls/history?${qs.toString()}`);

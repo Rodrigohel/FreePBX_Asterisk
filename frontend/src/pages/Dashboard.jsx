@@ -14,6 +14,7 @@ import TodaySummaryPanel from '../components/TodaySummaryPanel.jsx';
 import SettingsModal from '../components/SettingsModal.jsx';
 import ExtensionDetailModal from '../components/ExtensionDetailModal.jsx';
 import CallHistoryPanel from '../components/CallHistoryPanel.jsx';
+import MissedCallsPanel from '../components/MissedCallsPanel.jsx';
 
 const THEME_KEY = 'pbx_dashboard_theme';
 
@@ -200,7 +201,9 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
           <TodaySummaryPanel colors={colors} summary={todaySummary} />
         </div>
 
-        <CallHistoryPanel colors={colors} />
+        <MissedCallsPanel colors={colors} extensions={extensions} />
+
+        <CallHistoryPanel colors={colors} extensions={extensions} />
 
       </div>
 
@@ -220,6 +223,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
           favorite={favorites.includes(selectedExtension)}
           onToggleFavorite={handleToggleFavorite}
           onClose={() => setSelectedExtension(null)}
+          extensions={extensions}
         />
       )}
     </div>
