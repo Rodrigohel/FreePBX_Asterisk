@@ -60,6 +60,7 @@ export default function ActivityChart({ colors, range, onRangeChange, trend }) {
                 background: range === opt.key ? colors.bgCard : 'transparent',
                 color: range === opt.key ? colors.primary : colors.textSecondary,
                 boxShadow: range === opt.key ? colors.shadow : 'none',
+                transition: 'background .2s ease, color .2s ease, box-shadow .2s ease',
               }}
             >
               {opt.label}

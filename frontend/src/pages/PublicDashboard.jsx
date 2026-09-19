@@ -12,8 +12,13 @@ import AlertsPanel from '../components/AlertsPanel.jsx';
 import ServerHealthPanel from '../components/ServerHealthPanel.jsx';
 import TodaySummaryPanel from '../components/TodaySummaryPanel.jsx';
 import { ICONS } from '../components/Icon.jsx';
+import LoadingScreen from '../components/LoadingScreen.jsx';
 
 const THEME_KEY = 'pbx_dashboard_theme';
+
+function reveal(index) {
+  return { animation: 'fadeInUp .5s ease both', animationDelay: `${index * 0.06}s` };
+}
 
 function buildPublicCards(colors, payload) {
   const cards = [];
@@ -101,11 +106,7 @@ export default function PublicDashboard({ onLogin, settings }) {
   }
 
   if (!payload) {
-    return (
-      <div style={{ minHeight: '100vh', background: colors.bgPage, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textSecondary, fontFamily: "'Manrope',sans-serif" }}>
-        Carregando painel...
-      </div>
-    );
+    return <LoadingScreen colors={colors} label="Carregando painel..." />;
   }
 
   const cards = buildPublicCards(colors, payload);
@@ -133,23 +134,31 @@ export default function PublicDashboard({ onLogin, settings }) {
 
         {cards.length > 0 && <IndicatorCards colors={colors} cards={cards} />}
 
-        {payload.trend && <ActivityChart colors={colors} range={range} onRangeChange={setRange} trend={payload.trend} />}
+        {payload.trend && (
+          <div style={reveal(1)}>
+            <ActivityChart colors={colors} range={range} onRangeChange={setRange} trend={payload.trend} />
+          </div>
+        )}
 
         {(payload.extensions || payload.activeCalls) && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
+          <div style={{ ...reveal(2), display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
             {payload.extensions && <ExtensionsPanel colors={colors} extensions={payload.extensions} />}
             {payload.activeCalls && <ActiveCallsPanel colors={colors} calls={payload.activeCalls} />}
           </div>
         )}
 
         {(payload.alerts || payload.serverHealth) && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
+          <div style={{ ...reveal(3), display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
             {payload.alerts && <AlertsPanel colors={colors} alerts={payload.alerts} />}
             {payload.serverHealth && <ServerHealthPanel colors={colors} health={payload.serverHealth} />}
           </div>
         )}
 
-        {payload.todaySummary && <TodaySummaryPanel colors={colors} summary={payload.todaySummary} />}
+        {payload.todaySummary && (
+          <div style={reveal(4)}>
+            <TodaySummaryPanel colors={colors} summary={payload.todaySummary} />
+          </div>
+        )}
 
       </div>
 

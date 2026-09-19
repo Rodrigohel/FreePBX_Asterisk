@@ -16,6 +16,7 @@ import ExtensionDetailModal from '../components/ExtensionDetailModal.jsx';
 import CallHistoryPanel from '../components/CallHistoryPanel.jsx';
 import MissedCallsPanel from '../components/MissedCallsPanel.jsx';
 import FailuresReportPanel from '../components/FailuresReportPanel.jsx';
+import LoadingScreen from '../components/LoadingScreen.jsx';
 
 const THEME_KEY = 'pbx_dashboard_theme';
 
@@ -24,6 +25,13 @@ const STATUS_PILL = {
   degraded: (c) => ({ bg: c.amberSoft, fg: c.amber, label: 'Degradado' }),
   offline: (c) => ({ bg: c.redSoft, fg: c.red, label: 'Offline' }),
 };
+
+// Entrada escalonada das seções ao carregar a página — os valores são
+// sempre os mesmos a cada render, então a re-renderização por polling não
+// reinicia a animação (o navegador só reinicia quando o valor muda de fato).
+function reveal(index) {
+  return { animation: 'fadeInUp .5s ease both', animationDelay: `${index * 0.06}s` };
+}
 
 export default function Dashboard({ user, onLogout, settings, reloadSettings }) {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
@@ -120,11 +128,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   }, [loadAll, range]);
 
   if (!status || !trend || !todaySummary || !health) {
-    return (
-      <div style={{ minHeight: '100vh', background: colors.bgPage, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textSecondary, fontFamily: "'Manrope',sans-serif" }}>
-        Carregando dashboard...
-      </div>
-    );
+    return <LoadingScreen colors={colors} label="Carregando dashboard..." />;
   }
 
   const activeAlertsCount = alerts.filter((a) => a.status === 'active').length;
@@ -170,9 +174,11 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
 
         <IndicatorCards colors={colors} cards={indicatorCards} />
 
-        <ActivityChart colors={colors} range={range} onRangeChange={setRange} trend={trend} />
+        <div style={reveal(1)}>
+          <ActivityChart colors={colors} range={range} onRangeChange={setRange} trend={trend} />
+        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
+        <div style={{ ...reveal(2), display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
           <div ref={extensionsSectionRef}>
             <ExtensionsPanel
               colors={colors}
@@ -189,7 +195,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
+        <div style={{ ...reveal(3), display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
           <div ref={alertsSectionRef}>
             <AlertsPanel colors={colors} alerts={alerts} />
           </div>
@@ -198,15 +204,21 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
           </div>
         </div>
 
-        <div ref={todaySummarySectionRef}>
+        <div ref={todaySummarySectionRef} style={reveal(4)}>
           <TodaySummaryPanel colors={colors} summary={todaySummary} />
         </div>
 
-        <MissedCallsPanel colors={colors} extensions={extensions} />
+        <div style={reveal(5)}>
+          <MissedCallsPanel colors={colors} extensions={extensions} />
+        </div>
 
-        <FailuresReportPanel colors={colors} extensions={extensions} />
+        <div style={reveal(6)}>
+          <FailuresReportPanel colors={colors} extensions={extensions} />
+        </div>
 
-        <CallHistoryPanel colors={colors} extensions={extensions} />
+        <div style={reveal(7)}>
+          <CallHistoryPanel colors={colors} extensions={extensions} />
+        </div>
 
       </div>
 
