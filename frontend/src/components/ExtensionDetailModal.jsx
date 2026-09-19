@@ -132,16 +132,20 @@ export default function ExtensionDetailModal({ colors, number, onClose, favorite
                 const otherNumber = call.direction === 'made' ? call.dst : call.src;
                 const party = describeCallParty(otherNumber, directory);
                 return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 13, borderBottom: i < detail.callsToday.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
-                    <Icon paths={call.direction === 'made' ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
-                    <span style={{ color: colors.textPrimary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {call.direction === 'made' ? 'Ligou para ' : 'Recebeu de '}
-                      <strong>{party.label}</strong>
-                      {party.isInternal && <span style={{ color: colors.textTertiary, fontWeight: 400 }}> ({party.number}{party.detail ? ` · ${party.detail}` : ''})</span>}
-                    </span>
-                    <span style={{ color: colors.textTertiary, fontSize: 12, flexShrink: 0 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
-                    <span style={{ color: colors.textTertiary, fontSize: 12, flexShrink: 0 }}>{formatDuration(call.durationSeconds)}</span>
-                    <span style={{ color: colors.textTertiary, fontSize: 12, width: 68, textAlign: 'right', flexShrink: 0 }}>{new Date(call.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <div key={i} style={{ padding: '6px 0', fontSize: 13, borderBottom: i < detail.callsToday.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Icon paths={call.direction === 'made' ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
+                      <span style={{ color: colors.textPrimary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {call.direction === 'made' ? 'Ligou para ' : 'Recebeu de '}
+                        <strong>{party.label}</strong>
+                        {party.isInternal && <span style={{ color: colors.textTertiary, fontWeight: 400 }}> ({party.number}{party.detail ? ` · ${party.detail}` : ''})</span>}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 3, paddingLeft: 21 }}>
+                      <span style={{ color: colors.textTertiary, fontSize: 12 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
+                      <span style={{ color: colors.textTertiary, fontSize: 12 }}>{formatDuration(call.durationSeconds)}</span>
+                      <span style={{ color: colors.textTertiary, fontSize: 12, marginLeft: 'auto' }}>{new Date(call.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
                   </div>
                 );
               })}

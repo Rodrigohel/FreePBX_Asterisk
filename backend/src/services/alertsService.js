@@ -8,7 +8,7 @@ import { mockAlerts } from './mockData.js';
 const upsertStmt = db.prepare(`
   INSERT INTO alerts (id, severity, message, created_at, status, source_key)
   VALUES (@id, @severity, @message, @created_at, @status, @source_key)
-  ON CONFLICT(id) DO UPDATE SET status = @status
+  ON CONFLICT(id) DO UPDATE SET status = @status, message = @message
 `);
 const resolveBySourceStmt = db.prepare(`UPDATE alerts SET status = 'resolved' WHERE source_key = ? AND status = 'active'`);
 const listStmt = db.prepare(`SELECT * FROM alerts ORDER BY created_at DESC LIMIT 50`);
@@ -22,6 +22,18 @@ function rowToAlert(row) {
     createdAt: row.created_at,
     status: row.status,
   };
+}
+
+function formatDuration(ms) {
+  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) return `${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`;
+  return `${minutes}min`;
+}
+
+function formatDateTime(ms) {
+  return new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 /**
@@ -42,10 +54,13 @@ export async function runAlertChecks() {
           const lastSeen = getLastSeenOnline(ext.number);
           const offlineFor = lastSeen ? Date.now() - lastSeen : Infinity;
           if (offlineFor >= thresholdMs) {
+            const message = lastSeen
+              ? `Ramal ${ext.number} (${ext.name}) offline desde ${formatDateTime(lastSeen)} — ${formatDuration(offlineFor)} sem conexão`
+              : `Ramal ${ext.number} (${ext.name}) offline há mais de ${config.alerts.extensionOfflineMinutes} minutos (sem registro de última conexão)`;
             upsertStmt.run({
               id: sourceKey,
               severity: 'critical',
-              message: `Ramal ${ext.number} (${ext.name}) offline há mais de ${config.alerts.extensionOfflineMinutes} minutos`,
+              message,
               created_at: new Date().toISOString(),
               status: 'active',
               source_key: sourceKey,
