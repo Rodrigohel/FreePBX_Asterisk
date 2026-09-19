@@ -51,24 +51,36 @@ function GhostIconButton({ h, onClick, title, children }) {
 
 export default function Sidebar({
   colors, companyName, pbxName, logoUrl, statusPill, navItems,
-  isDark, onToggleTheme, user, onLogout, onOpenSettings,
+  isDark, onToggleTheme, user, onLogout, onOpenSettings, open, onClose,
 }) {
   const h = colors.header;
   const [logoutHover, setLogoutHover] = useState(false);
 
   return (
-    <aside style={{
+    <aside className={`app-sidebar${open ? ' is-open' : ''}`} style={{
       width: 252, flexShrink: 0, background: h.gradient, position: 'sticky', top: 0, height: '100vh',
       display: 'flex', flexDirection: 'column', padding: '22px 16px', gap: 20, overflow: 'hidden',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 4px' }}>
         <Logo colors={colors} logoUrl={logoUrl} size={38} />
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 650, fontSize: 15, color: h.text, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {companyName}
           </div>
           <div style={{ fontSize: 12, color: h.textSecondary }}>{pbxName}</div>
         </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Fechar menu"
+            style={{
+              width: 30, height: 30, borderRadius: 8, border: `1px solid ${h.glassBorder}`, background: h.glassBg,
+              color: h.text, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            <Icon paths={ICONS.close} size={15} strokeWidth={2.2} />
+          </button>
+        )}
       </div>
 
       <div style={{
@@ -84,7 +96,13 @@ export default function Sidebar({
           Navegação
         </div>
         {navItems.map((item) => (
-          <NavItem key={item.key} h={h} icon={item.icon} label={item.label} onClick={item.onClick} />
+          <NavItem
+            key={item.key}
+            h={h}
+            icon={item.icon}
+            label={item.label}
+            onClick={() => { item.onClick(); onClose?.(); }}
+          />
         ))}
       </nav>
 

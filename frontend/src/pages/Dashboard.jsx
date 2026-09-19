@@ -53,6 +53,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   const [refreshHover, setRefreshHover] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [showSettings, setShowSettings] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [status, setStatus] = useState(null);
   const [extensions, setExtensions] = useState([]);
@@ -187,9 +188,34 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
         user={user}
         onLogout={onLogout}
         onOpenSettings={user?.role === 'admin' ? () => setShowSettings(true) : undefined}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
-      <div style={{ flex: 1, minWidth: 0, padding: '24px 32px 64px', display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'Manrope',sans-serif" }}>
+      <div
+        className={`app-sidebar-backdrop${sidebarOpen ? ' is-open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      <div className="app-main-content" style={{ flex: 1, minWidth: 0, padding: '24px 32px 64px', display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'Manrope',sans-serif" }}>
+
+        <div className="app-mobile-topbar" style={{
+          alignItems: 'center', gap: 12, background: colors.header.gradient, borderRadius: 14, padding: '12px 16px', margin: '0 0 4px',
+        }}>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menu"
+            style={{
+              width: 34, height: 34, borderRadius: 9, border: `1px solid ${colors.header.glassBorder}`, background: colors.header.glassBg,
+              color: colors.header.text, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            <Icon paths={ICONS.menu} size={17} strokeWidth={2.2} />
+          </button>
+          <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 650, fontSize: 15, color: colors.header.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {settings.companyName}
+          </div>
+        </div>
 
         <TopBar colors={colors} demoMode={status.demoMode} />
 

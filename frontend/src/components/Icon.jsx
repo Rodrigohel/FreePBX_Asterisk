@@ -44,4 +44,6 @@ export const ICONS = {
   clock: ['M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0', 'M12 7v5l4 2'],
   upload: ['M12 3v12', 'M7 8l5-5 5 5', 'M5 21h14'],
   chevronDown: ['M6 9l6 6 6-6'],
+  menu: ['M4 6h16', 'M4 12h16', 'M4 18h16'],
+  close: ['M18 6 6 18', 'M6 6l12 12'],
 };
