@@ -5,10 +5,16 @@ import { getExtensions, getExtensionsSummary } from '../services/extensionsServi
 import { getActiveCalls, getCallsSummary, getTodaySummary } from '../services/callsService.js';
 import { getAlerts, getActiveAlertsCount } from '../services/alertsService.js';
 import { getServerHealth } from '../services/healthService.js';
+import { getSettings } from '../services/settingsService.js';
 
 export const publicRouter = Router();
 
 const alertsService = { getActiveAlertsCount };
+
+// Nome da empresa/PBX e logo — usados no cabeçalho antes mesmo do login.
+publicRouter.get('/settings', (req, res) => {
+  res.json(getSettings());
+});
 
 /**
  * Um único payload agregando somente os cards ligados em config.public.cards
