@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getStatus } from '../services/statusService.js';
 import { getExtensions, getExtensionsSummary, getExtensionDetail } from '../services/extensionsService.js';
-import { getActiveCalls, getCallsSummary, getTodaySummary, getExtensionCallsToday, searchCallHistory } from '../services/callsService.js';
+import { getActiveCalls, getCallsSummary, getTodaySummary, getExtensionCallsToday, searchCallHistory, getMissedCallsToday } from '../services/callsService.js';
 import { getAlerts, getActiveAlertsCount } from '../services/alertsService.js';
 import { getServerHealth } from '../services/healthService.js';
 import { getFavoriteNumbers, addFavorite, removeFavorite } from '../services/favoritesService.js';
@@ -62,6 +62,10 @@ dashboardRouter.get('/calls/today-summary', async (req, res) => {
 dashboardRouter.get('/calls/history', async (req, res) => {
   const { q, from, to, page, pageSize } = req.query;
   res.json(await searchCallHistory({ q, from, to, page, pageSize }));
+});
+
+dashboardRouter.get('/calls/missed-today', async (req, res) => {
+  res.json(await getMissedCallsToday());
 });
 
 dashboardRouter.get('/alerts', async (req, res) => {

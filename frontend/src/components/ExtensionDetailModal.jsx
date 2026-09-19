@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
+import { buildExtensionDirectory, describeCallParty } from '../utils/extensionDirectory.js';
 
 const STATE_LABEL = {
   free: 'Livre',
@@ -33,9 +34,10 @@ function formatDuration(seconds) {
   return m > 0 ? `${m}m${s}s` : `${s}s`;
 }
 
-export default function ExtensionDetailModal({ colors, number, onClose, favorite, onToggleFavorite }) {
+export default function ExtensionDetailModal({ colors, number, onClose, favorite, onToggleFavorite, extensions = [] }) {
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState('');
+  const directory = useMemo(() => buildExtensionDirectory(extensions), [extensions]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,18 +128,23 @@ export default function ExtensionDetailModal({ colors, number, onClose, favorite
               {detail.callsToday.length === 0 && (
                 <div style={{ fontSize: 13, color: colors.textTertiary }}>Nenhuma chamada hoje.</div>
               )}
-              {detail.callsToday.map((call, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 13, borderBottom: i < detail.callsToday.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
-                  <Icon paths={call.direction === 'made' ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
-                  <span style={{ color: colors.textPrimary }}>
-                    {call.direction === 'made' ? 'Ligou para ' : 'Recebeu de '}
-                    <strong>{call.direction === 'made' ? call.dst : call.src}</strong>
-                  </span>
-                  <span style={{ color: colors.textTertiary, fontSize: 12 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
-                  <span style={{ marginLeft: 'auto', color: colors.textTertiary, fontSize: 12 }}>{formatDuration(call.durationSeconds)}</span>
-                  <span style={{ color: colors.textTertiary, fontSize: 12, width: 68, textAlign: 'right', flexShrink: 0 }}>{new Date(call.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-              ))}
+              {detail.callsToday.map((call, i) => {
+                const otherNumber = call.direction === 'made' ? call.dst : call.src;
+                const party = describeCallParty(otherNumber, directory);
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 13, borderBottom: i < detail.callsToday.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
+                    <Icon paths={call.direction === 'made' ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
+                    <span style={{ color: colors.textPrimary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {call.direction === 'made' ? 'Ligou para ' : 'Recebeu de '}
+                      <strong>{party.label}</strong>
+                      {party.isInternal && <span style={{ color: colors.textTertiary, fontWeight: 400 }}> ({party.number}{party.detail ? ` · ${party.detail}` : ''})</span>}
+                    </span>
+                    <span style={{ color: colors.textTertiary, fontSize: 12, flexShrink: 0 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
+                    <span style={{ color: colors.textTertiary, fontSize: 12, flexShrink: 0 }}>{formatDuration(call.durationSeconds)}</span>
+                    <span style={{ color: colors.textTertiary, fontSize: 12, width: 68, textAlign: 'right', flexShrink: 0 }}>{new Date(call.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}

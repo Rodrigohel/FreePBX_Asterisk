@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
+import { buildExtensionDirectory, describeCallParty, GROUP_LABELS } from '../utils/extensionDirectory.js';
 
 const DISPOSITION_LABEL = {
   ANSWERED: 'Atendida',
@@ -8,6 +9,13 @@ const DISPOSITION_LABEL = {
   BUSY: 'Ocupado',
   FAILED: 'Falhou',
 };
+
+const TOWER_FILTERS = [
+  { value: 'all', label: 'Todas as torres/blocos' },
+  { value: 'torreA', label: GROUP_LABELS.torreA },
+  { value: 'blocoB', label: GROUP_LABELS.blocoB },
+  { value: 'common', label: GROUP_LABELS.common },
+];
 
 function dispositionColor(colors, disposition) {
   if (disposition === 'ANSWERED') return colors.green;
@@ -30,13 +38,31 @@ function daysAgoIso(days) {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 }
 
-export default function CallHistoryPanel({ colors }) {
+function PartyLabel({ colors, party, align }) {
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: align }}>
+      <span style={{ color: colors.textPrimary, fontWeight: party.isInternal ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {party.isInternal ? party.label : party.number}
+      </span>
+      {party.isInternal && (
+        <span style={{ color: colors.textTertiary, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {party.number}{party.detail ? ` · ${party.detail}` : ''}
+        </span>
+      )}
+    </span>
+  );
+}
+
+export default function CallHistoryPanel({ colors, extensions = [] }) {
   const [q, setQ] = useState('');
   const [from, setFrom] = useState(daysAgoIso(30));
   const [to, setTo] = useState(todayIso());
+  const [tower, setTower] = useState('all');
   const [page, setPage] = useState(1);
   const [result, setResult] = useState({ data: [], total: 0, pageSize: 25 });
   const [loading, setLoading] = useState(false);
+
+  const directory = useMemo(() => buildExtensionDirectory(extensions), [extensions]);
 
   const search = useCallback(async (params) => {
     setLoading(true);
@@ -61,12 +87,20 @@ export default function CallHistoryPanel({ colors }) {
 
   const totalPages = Math.max(1, Math.ceil(result.total / (result.pageSize || 25)));
 
+  const rows = result.data.map((call) => ({
+    call,
+    from: describeCallParty(call.src, directory),
+    to: describeCallParty(call.dst, directory),
+  })).filter(({ from: fromParty, to: toParty }) => (
+    tower === 'all' || fromParty.groupKey === tower || toParty.groupKey === tower
+  ));
+
   return (
     <div style={{ background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '20px 22px', boxShadow: colors.shadow }}>
       <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 16, fontWeight: 600, color: colors.textPrimary, marginBottom: 2 }}>Histórico de chamadas</div>
-      <div style={{ fontSize: 12.5, color: colors.textSecondary, marginBottom: 14 }}>Busque por ramal, apartamento ou número, num período</div>
+      <div style={{ fontSize: 12.5, color: colors.textSecondary, marginBottom: 14 }}>Busque por ramal, apartamento ou número, num período — mostra de onde veio e para onde foi cada ligação</div>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -94,21 +128,32 @@ export default function CallHistoryPanel({ colors }) {
         </button>
       </form>
 
+      <select
+        value={tower}
+        onChange={(e) => setTower(e.target.value)}
+        style={{ padding: '7px 10px', borderRadius: 10, border: `1px solid ${colors.border}`, fontSize: 12.5, fontFamily: 'inherit', background: colors.bgCardAlt, color: colors.textPrimary, marginBottom: 12 }}
+      >
+        {TOWER_FILTERS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+      </select>
+
       <div style={{ display: 'flex', flexDirection: 'column', borderTop: `1px solid ${colors.border}` }}>
         {loading && (
           <div style={{ padding: '16px 2px', fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>Buscando...</div>
         )}
-        {!loading && result.data.length === 0 && (
-          <div style={{ padding: '16px 2px', fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>Nenhuma chamada encontrada nesse período.</div>
+        {!loading && rows.length === 0 && (
+          <div style={{ padding: '16px 2px', fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>Nenhuma chamada encontrada.</div>
         )}
-        {!loading && result.data.map((call, i) => (
+        {!loading && rows.map(({ call, from: fromParty, to: toParty }, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 2px', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
             <Icon paths={call.direction === 'made' ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
-            <span style={{ fontWeight: 700, color: colors.textPrimary, fontFamily: "'Space Grotesk',sans-serif", width: 60, flexShrink: 0 }}>{call.direction === 'made' ? call.src : call.dst}</span>
-            <span style={{ color: colors.textSecondary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {call.direction === 'made' ? `para ${call.dst}` : `de ${call.src}`}
-            </span>
-            <span style={{ color: dispositionColor(colors, call.disposition), fontWeight: 600, fontSize: 12 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
+            <div style={{ flex: '1 1 120px', minWidth: 0 }}>
+              <PartyLabel colors={colors} party={fromParty} align="left" />
+            </div>
+            <Icon paths={['M5 12h14', 'M13 6l6 6-6 6']} size={13} color={colors.textTertiary} strokeWidth={2} />
+            <div style={{ flex: '1 1 120px', minWidth: 0 }}>
+              <PartyLabel colors={colors} party={toParty} align="left" />
+            </div>
+            <span style={{ color: dispositionColor(colors, call.disposition), fontWeight: 600, fontSize: 12, flexShrink: 0 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
             <span style={{ color: colors.textTertiary, fontSize: 12, width: 48, textAlign: 'right', flexShrink: 0 }}>{formatDuration(call.durationSeconds)}</span>
             <span style={{ color: colors.textTertiary, fontSize: 12, width: 116, textAlign: 'right', flexShrink: 0 }}>{new Date(call.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
           </div>
@@ -117,7 +162,11 @@ export default function CallHistoryPanel({ colors }) {
 
       {result.total > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 12, fontSize: 12.5, color: colors.textSecondary }}>
-          <span>{result.total} resultados · página {page} de {totalPages}</span>
+          <span>
+            {tower === 'all'
+              ? `${result.total} resultados · página ${page} de ${totalPages}`
+              : `${rows.length} de ${result.data.length} nesta página (filtrado por torre) · página ${page} de ${totalPages}`}
+          </span>
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}

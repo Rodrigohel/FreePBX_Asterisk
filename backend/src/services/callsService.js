@@ -180,6 +180,31 @@ export async function searchCallHistory({ q, from, to, page = 1, pageSize = 25 }
   }
 }
 
+// Chamadas não atendidas hoje, agrupadas por ramal de destino — útil pra
+// portaria ver quais unidades não atenderam quando ligaram (ex.: visitante
+// ou entrega na portaria, morador não atendeu o interfone).
+export async function getMissedCallsToday(limit = 50) {
+  if (config.forceMock) {
+    return { data: [], source: 'mock' };
+  }
+  try {
+    const pool = await getCdrPool();
+    const [rows] = await pool.query(
+      `SELECT dst, COUNT(*) AS total, MAX(calldate) AS lastAt
+       FROM cdr
+       WHERE calldate >= CURDATE() AND disposition = 'NO ANSWER'
+       GROUP BY dst
+       ORDER BY total DESC, lastAt DESC
+       LIMIT ?`,
+      [limit]
+    );
+    const data = rows.map((r) => ({ number: r.dst, total: Number(r.total), lastAt: r.lastAt }));
+    return { data, source: 'cdr' };
+  } catch (err) {
+    return { data: [], source: 'mock', error: err.message };
+  }
+}
+
 export async function getTodaySummary() {
   if (config.forceMock) {
     return { ...mockTodaySummary(), source: 'mock' };
