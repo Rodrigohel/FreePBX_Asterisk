@@ -4,6 +4,7 @@ import { getExtensions } from './extensionsService.js';
 import { getServerHealth } from './healthService.js';
 import { getLastSeenOnline } from './extensionState.js';
 import { mockAlerts } from './mockData.js';
+import { sendTelegramMessage } from './telegramService.js';
 
 const upsertStmt = db.prepare(`
   INSERT INTO alerts (id, severity, message, created_at, status, source_key)
@@ -11,8 +12,31 @@ const upsertStmt = db.prepare(`
   ON CONFLICT(id) DO UPDATE SET status = @status, message = @message
 `);
 const resolveBySourceStmt = db.prepare(`UPDATE alerts SET status = 'resolved' WHERE source_key = ? AND status = 'active'`);
+const getByIdStmt = db.prepare(`SELECT status FROM alerts WHERE id = ?`);
+const getActiveBySourceStmt = db.prepare(`SELECT message FROM alerts WHERE source_key = ? AND status = 'active'`);
 const listStmt = db.prepare(`SELECT * FROM alerts ORDER BY created_at DESC LIMIT 50`);
 const countActiveStmt = db.prepare(`SELECT COUNT(*) AS n FROM alerts WHERE status = 'active'`);
+
+const SEVERITY_EMOJI = { critical: '🔴', warning: '🟠', info: 'ℹ️' };
+
+// Só notifica quando o alerta vira ativo pela primeira vez (ou é
+// reativado depois de resolvido) — sem isso o Telegram tocaria a cada
+// verificação (MONITOR_INTERVAL_MS) enquanto o problema persistir.
+function upsertAlert({ id, severity, message, status, source_key }) {
+  const existing = getByIdStmt.get(id);
+  upsertStmt.run({ id, severity, message, created_at: new Date().toISOString(), status, source_key });
+  if (status === 'active' && (!existing || existing.status === 'resolved')) {
+    sendTelegramMessage(`${SEVERITY_EMOJI[severity] || '⚠️'} ${message}`);
+  }
+}
+
+function resolveAlert(sourceKey) {
+  const activeAlert = getActiveBySourceStmt.get(sourceKey);
+  const info = resolveBySourceStmt.run(sourceKey);
+  if (info.changes > 0 && activeAlert) {
+    sendTelegramMessage(`✅ Resolvido: ${activeAlert.message}`);
+  }
+}
 
 function rowToAlert(row) {
   return {
@@ -57,17 +81,10 @@ export async function runAlertChecks() {
             const message = lastSeen
               ? `Ramal ${ext.number} (${ext.name}) offline desde ${formatDateTime(lastSeen)} — ${formatDuration(offlineFor)} sem conexão`
               : `Ramal ${ext.number} (${ext.name}) offline há mais de ${config.alerts.extensionOfflineMinutes} minutos (sem registro de última conexão)`;
-            upsertStmt.run({
-              id: sourceKey,
-              severity: 'critical',
-              message,
-              created_at: new Date().toISOString(),
-              status: 'active',
-              source_key: sourceKey,
-            });
+            upsertAlert({ id: sourceKey, severity: 'critical', message, status: 'active', source_key: sourceKey });
           }
         } else {
-          resolveBySourceStmt.run(sourceKey);
+          resolveAlert(sourceKey);
         }
       }
     }
@@ -80,16 +97,15 @@ export async function runAlertChecks() {
     if (health.source === 'system') {
       const sourceKey = 'disk-usage-high';
       if (health.diskPercent >= config.alerts.diskUsagePercent) {
-        upsertStmt.run({
+        upsertAlert({
           id: sourceKey,
           severity: 'warning',
           message: `Uso de disco acima de ${config.alerts.diskUsagePercent}% (atual: ${health.diskPercent}%)`,
-          created_at: new Date().toISOString(),
           status: 'active',
           source_key: sourceKey,
         });
       } else {
-        resolveBySourceStmt.run(sourceKey);
+        resolveAlert(sourceKey);
       }
     }
   } catch {
