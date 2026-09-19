@@ -13,8 +13,6 @@ import ServerHealthPanel from '../components/ServerHealthPanel.jsx';
 import TodaySummaryPanel from '../components/TodaySummaryPanel.jsx';
 import { ICONS } from '../components/Icon.jsx';
 
-const COMPANY_NAME = import.meta.env.VITE_COMPANY_NAME || 'Acme Distribuidora';
-const PBX_NAME = import.meta.env.VITE_PBX_NAME || 'PBX Matriz';
 const THEME_KEY = 'pbx_dashboard_theme';
 
 function buildPublicCards(colors, payload) {
@@ -50,7 +48,7 @@ function buildPublicCards(colors, payload) {
   return cards;
 }
 
-export default function PublicDashboard({ onLogin }) {
+export default function PublicDashboard({ onLogin, settings }) {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
   const [range, setRange] = useState('today');
   const [refreshing, setRefreshing] = useState(false);
@@ -97,7 +95,7 @@ export default function PublicDashboard({ onLogin }) {
       <div style={{ minHeight: '100vh', background: colors.bgPage, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textSecondary, fontFamily: "'Manrope',sans-serif", flexDirection: 'column', gap: 12 }}>
         <div>Não foi possível carregar o painel público.</div>
         <button onClick={() => setShowLogin(true)} style={{ border: 'none', background: colors.primary, color: '#fff', borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Entrar</button>
-        {showLogin && <LoginModal colors={colors} onLogin={handleLogin} onClose={() => setShowLogin(false)} />}
+        {showLogin && <LoginModal colors={colors} onLogin={handleLogin} onClose={() => setShowLogin(false)} logoUrl={settings.logoUrl} />}
       </div>
     );
   }
@@ -119,8 +117,9 @@ export default function PublicDashboard({ onLogin }) {
 
         <PublicHeader
           colors={colors}
-          companyName={COMPANY_NAME}
-          pbxName={PBX_NAME}
+          companyName={settings.companyName}
+          pbxName={settings.pbxName}
+          logoUrl={settings.logoUrl}
           status={payload.status}
           lastUpdateLabel={lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null}
           onRefresh={handleRefresh}
@@ -154,7 +153,7 @@ export default function PublicDashboard({ onLogin }) {
 
       </div>
 
-      {showLogin && <LoginModal colors={colors} onLogin={handleLogin} onClose={() => setShowLogin(false)} />}
+      {showLogin && <LoginModal colors={colors} onLogin={handleLogin} onClose={() => setShowLogin(false)} logoUrl={settings.logoUrl} />}
     </div>
   );
 }

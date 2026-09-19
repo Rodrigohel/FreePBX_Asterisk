@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts';
+import { ICONS } from './Icon.jsx';
 
 const STATE_LABEL = {
   free: 'Livre',
@@ -17,6 +18,47 @@ const DONUT_NAME_TO_STATE = {
   'Desconhecido': 'unknown',
 };
 
+const COMMON_AREA_KEYWORDS = ['portaria', 'porteiro', 'academia', 'salão', 'salao', 'festas', 'gourmet', 'acesso'];
+
+const GROUP_LABELS = {
+  torreA: 'Torre A',
+  blocoB: 'Bloco B',
+  common: 'Portaria e áreas comuns',
+  other: 'Outros',
+};
+
+// Convenção do condomínio: ramais que começam com 1 são da Torre A
+// (andar+unidade em seguida), com 2 são do Bloco B, e o restante
+// (porteiros, academia, salão de festas, espaço gourmet) fica em "outros".
+function classifyExtension(ext) {
+  const name = (ext.name || '').toLowerCase();
+  if (COMMON_AREA_KEYWORDS.some((kw) => name.includes(kw))) {
+    return { key: 'common', unitLabel: null };
+  }
+  const num = ext.number || '';
+  if (num.startsWith('1') && num.length >= 3) {
+    return { key: 'torreA', unitLabel: formatUnitLabel(num) };
+  }
+  if (num.startsWith('2') && num.length >= 3) {
+    return { key: 'blocoB', unitLabel: formatUnitLabel(num) };
+  }
+  return { key: 'other', unitLabel: null };
+}
+
+function formatUnitLabel(num) {
+  const rest = num.slice(1);
+  if (rest.length < 3) return null;
+  const floor = rest.slice(0, rest.length - 2);
+  const unit = rest.slice(-2);
+  return `Andar ${floor} · Unid. ${unit}`;
+}
+
+function offlineDurationMs(ext) {
+  if (ext.state !== 'offline') return null;
+  if (!ext.lastActivity) return Infinity;
+  return Date.now() - new Date(ext.lastActivity).getTime();
+}
+
 function formatMeta(ext) {
   if (ext.state !== 'offline') return 'agora';
   if (!ext.lastActivity) return '—';
@@ -29,6 +71,19 @@ function formatMeta(ext) {
   return `${Math.round(hours / 24)}d atrás`;
 }
 
+function exactOfflineSince(ext) {
+  if (ext.state !== 'offline' || !ext.lastActivity) return undefined;
+  return `Offline desde ${new Date(ext.lastActivity).toLocaleString('pt-BR')}`;
+}
+
+function compareOfflineFirst(a, b) {
+  const aOff = a.state === 'offline';
+  const bOff = b.state === 'offline';
+  if (aOff !== bOff) return aOff ? -1 : 1;
+  if (aOff && bOff) return (offlineDurationMs(b) || 0) - (offlineDurationMs(a) || 0);
+  return a.number.localeCompare(b.number, undefined, { numeric: true });
+}
+
 // filter: null (todos) | 'free' | 'in_call' | 'ringing' | 'offline' | 'unknown' | '__online__' (qualquer um exceto offline)
 function matchesFilter(state, filter) {
   if (!filter) return true;
@@ -36,11 +91,27 @@ function matchesFilter(state, filter) {
   return state === filter;
 }
 
-export default function ExtensionsPanel({ colors, extensions, filter, onFilterChange }) {
+function StarButton({ colors, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      title={active ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+      style={{ border: 'none', background: 'transparent', padding: 2, cursor: 'pointer', display: 'flex', flexShrink: 0 }}
+    >
+      <svg width={14} height={14} viewBox="0 0 24 24" fill={active ? colors.amber : 'none'} stroke={active ? colors.amber : colors.textTertiary} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+        <path d={ICONS.starOutline[0]} />
+      </svg>
+    </button>
+  );
+}
+
+export default function ExtensionsPanel({ colors, extensions, filter, onFilterChange, favorites = [], onToggleFavorite, onSelectExtension }) {
   const ref = useRef(null);
   const chartRef = useRef(null);
   const onFilterChangeRef = useRef(onFilterChange);
   onFilterChangeRef.current = onFilterChange;
+  const [search, setSearch] = useState('');
+  const [groupMode, setGroupMode] = useState('tower');
 
   useEffect(() => {
     if (!ref.current) return;
@@ -91,8 +162,70 @@ export default function ExtensionsPanel({ colors, extensions, filter, onFilterCh
 
   const stateColor = (state) => ({ free: colors.green, in_call: colors.red, ringing: colors.primary, offline: colors.textTertiary, unknown: colors.amber }[state] || colors.textTertiary);
 
-  const filteredExtensions = extensions.filter((ext) => matchesFilter(ext.state, filter));
+  const searchTerm = search.trim().toLowerCase();
+  const favSet = new Set(favorites);
+
+  const visibleExtensions = extensions
+    .filter((ext) => matchesFilter(ext.state, filter))
+    .filter((ext) => !searchTerm || ext.number.includes(searchTerm) || (ext.name || '').toLowerCase().includes(searchTerm));
+
   const filterLabel = filter === '__online__' ? 'Online' : STATE_LABEL[filter];
+
+  function renderRow(ext) {
+    const { unitLabel } = classifyExtension(ext);
+    return (
+      <div
+        key={ext.number}
+        onClick={() => onSelectExtension?.(ext.number)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 2px', borderBottom: `1px solid ${colors.border}`, fontSize: 13, cursor: onSelectExtension ? 'pointer' : 'default' }}
+      >
+        {onToggleFavorite && (
+          <StarButton colors={colors} active={favSet.has(ext.number)} onClick={(e) => { e.stopPropagation(); onToggleFavorite(ext.number, favSet.has(ext.number)); }} />
+        )}
+        <span style={{ width: 7, height: 7, borderRadius: 99, background: stateColor(ext.state), flexShrink: 0 }} />
+        <span style={{ fontWeight: 700, color: colors.textPrimary, fontFamily: "'Space Grotesk',sans-serif", width: 40, flexShrink: 0 }}>{ext.number}</span>
+        <span style={{ color: colors.textPrimary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {ext.name}
+          {unitLabel && <span style={{ color: colors.textTertiary, fontWeight: 400 }}> · {unitLabel}</span>}
+        </span>
+        <span style={{ color: stateColor(ext.state), fontWeight: 600, fontSize: 12 }}>{STATE_LABEL[ext.state] || 'Desconhecido'}</span>
+        <span title={exactOfflineSince(ext)} style={{ color: colors.textTertiary, fontSize: 12, width: 56, textAlign: 'right', flexShrink: 0 }}>{formatMeta(ext)}</span>
+      </div>
+    );
+  }
+
+  function renderSection(label, list) {
+    if (list.length === 0) return null;
+    return (
+      <div key={label}>
+        <div style={{ padding: '10px 2px 4px', fontSize: 11.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: colors.textTertiary }}>
+          {label} · {list.length}
+        </div>
+        {list.map(renderRow)}
+      </div>
+    );
+  }
+
+  let listContent;
+  if (visibleExtensions.length === 0) {
+    listContent = <div style={{ padding: '16px 2px', fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>Nenhum ramal encontrado.</div>;
+  } else if (groupMode === 'offline') {
+    listContent = [...visibleExtensions].sort(compareOfflineFirst).map(renderRow);
+  } else {
+    const favoriteExts = visibleExtensions.filter((e) => favSet.has(e.number)).sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+    const rest = visibleExtensions.filter((e) => !favSet.has(e.number));
+    const grouped = { torreA: [], blocoB: [], common: [], other: [] };
+    rest.forEach((ext) => grouped[classifyExtension(ext).key].push(ext));
+    Object.values(grouped).forEach((list) => list.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true })));
+
+    listContent = [
+      renderSection('Favoritos', favoriteExts),
+      renderSection(GROUP_LABELS.torreA, grouped.torreA),
+      renderSection(GROUP_LABELS.blocoB, grouped.blocoB),
+      renderSection(GROUP_LABELS.common, grouped.common),
+      renderSection(GROUP_LABELS.other, grouped.other),
+    ];
+  }
 
   return (
     <div style={{ background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '20px 22px', boxShadow: colors.shadow }}>
@@ -109,19 +242,34 @@ export default function ExtensionsPanel({ colors, extensions, filter, onFilterCh
       </div>
       <div style={{ fontSize: 12.5, color: colors.textSecondary, marginBottom: 10 }}>Clique numa fatia do gráfico para filtrar</div>
       <div ref={ref} style={{ width: '100%', height: 220 }} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 8, borderTop: `1px solid ${colors.border}`, maxHeight: 260, overflowY: 'auto' }}>
-        {filteredExtensions.length === 0 && (
-          <div style={{ padding: '16px 2px', fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>Nenhum ramal nesse estado.</div>
-        )}
-        {filteredExtensions.map((ext) => (
-          <div key={ext.number} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 2px', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
-            <span style={{ width: 7, height: 7, borderRadius: 99, background: stateColor(ext.state), flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, color: colors.textPrimary, fontFamily: "'Space Grotesk',sans-serif", width: 44, flexShrink: 0 }}>{ext.number}</span>
-            <span style={{ color: colors.textPrimary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ext.name}</span>
-            <span style={{ color: stateColor(ext.state), fontWeight: 600, fontSize: 12 }}>{STATE_LABEL[ext.state] || 'Desconhecido'}</span>
-            <span style={{ color: colors.textTertiary, fontSize: 12, width: 56, textAlign: 'right', flexShrink: 0 }}>{formatMeta(ext)}</span>
-          </div>
-        ))}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 4 }}>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por ramal ou nome..."
+          style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 10, border: `1px solid ${colors.border}`, fontSize: 13, fontFamily: 'inherit', background: colors.bgCardAlt, color: colors.textPrimary }}
+        />
+        <div style={{ display: 'flex', border: `1px solid ${colors.border}`, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
+          <button
+            onClick={() => setGroupMode('tower')}
+            title="Agrupar por Torre/Bloco"
+            style={{ border: 'none', padding: '0 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', background: groupMode === 'tower' ? colors.primary : colors.bgCardAlt, color: groupMode === 'tower' ? '#fff' : colors.textSecondary }}
+          >
+            Torre/Bloco
+          </button>
+          <button
+            onClick={() => setGroupMode('offline')}
+            title="Ordenar por tempo offline"
+            style={{ border: 'none', padding: '0 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', background: groupMode === 'offline' ? colors.primary : colors.bgCardAlt, color: groupMode === 'offline' ? '#fff' : colors.textSecondary }}
+          >
+            Offline há mais tempo
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 4, borderTop: `1px solid ${colors.border}`, maxHeight: 320, overflowY: 'auto' }}>
+        {listContent}
       </div>
     </div>
   );

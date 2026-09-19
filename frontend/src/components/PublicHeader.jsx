@@ -8,7 +8,7 @@ const STATUS_PILL = {
 };
 
 export default function PublicHeader({
-  colors, companyName, pbxName, status, lastUpdateLabel,
+  colors, companyName, pbxName, logoUrl, status, lastUpdateLabel,
   onRefresh, refreshing, isDark, onToggleTheme, onLoginClick,
 }) {
   const statusPill = status ? (STATUS_PILL[status.overall] || STATUS_PILL.operational)(colors) : null;
@@ -19,7 +19,7 @@ export default function PublicHeader({
       background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '18px 22px', boxShadow: colors.shadow,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-        <Logo colors={colors} />
+        <Logo colors={colors} logoUrl={logoUrl} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 600, fontSize: 17, color: colors.textPrimary, lineHeight: 1.2 }}>{companyName}</div>
           <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>{pbxName}</div>

@@ -11,9 +11,10 @@ import ActiveCallsPanel from '../components/ActiveCallsPanel.jsx';
 import AlertsPanel from '../components/AlertsPanel.jsx';
 import ServerHealthPanel from '../components/ServerHealthPanel.jsx';
 import TodaySummaryPanel from '../components/TodaySummaryPanel.jsx';
+import SettingsModal from '../components/SettingsModal.jsx';
+import ExtensionDetailModal from '../components/ExtensionDetailModal.jsx';
+import CallHistoryPanel from '../components/CallHistoryPanel.jsx';
 
-const COMPANY_NAME = import.meta.env.VITE_COMPANY_NAME || 'Acme Distribuidora';
-const PBX_NAME = import.meta.env.VITE_PBX_NAME || 'PBX Matriz';
 const THEME_KEY = 'pbx_dashboard_theme';
 
 const STATUS_PILL = {
@@ -22,11 +23,12 @@ const STATUS_PILL = {
   offline: (c) => ({ bg: c.redSoft, fg: c.red, label: 'Offline' }),
 };
 
-export default function Dashboard({ user, onLogout }) {
+export default function Dashboard({ user, onLogout, settings, reloadSettings }) {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
   const [range, setRange] = useState('today');
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [showSettings, setShowSettings] = useState(false);
 
   const [status, setStatus] = useState(null);
   const [extensions, setExtensions] = useState([]);
@@ -37,6 +39,8 @@ export default function Dashboard({ user, onLogout }) {
   const [alerts, setAlerts] = useState([]);
   const [health, setHealth] = useState(null);
   const [extensionFilter, setExtensionFilter] = useState(null);
+  const [favorites, setFavorites] = useState([]);
+  const [selectedExtension, setSelectedExtension] = useState(null);
 
   const extensionsSectionRef = useRef(null);
   const activeCallsSectionRef = useRef(null);
@@ -57,9 +61,9 @@ export default function Dashboard({ user, onLogout }) {
   }, [scrollToSection]);
 
   const loadAll = useCallback(async (currentRange) => {
-    const [statusRes, extRes, extSumRes, callsRes, trendRes, todayRes, alertsRes, healthRes] = await Promise.all([
+    const [statusRes, extRes, extSumRes, callsRes, trendRes, todayRes, alertsRes, healthRes, favRes] = await Promise.all([
       api.status(), api.extensions(), api.extensionsSummary(), api.activeCalls(),
-      api.callsSummary(currentRange), api.todaySummary(), api.alerts(), api.serverHealth(),
+      api.callsSummary(currentRange), api.todaySummary(), api.alerts(), api.serverHealth(), api.favorites(),
     ]);
     setStatus(statusRes);
     setExtensions(extRes.data);
@@ -69,7 +73,18 @@ export default function Dashboard({ user, onLogout }) {
     setTodaySummary(todayRes);
     setAlerts(alertsRes.data);
     setHealth(healthRes);
+    setFavorites(favRes.data);
     setLastUpdate(new Date());
+  }, []);
+
+  const handleToggleFavorite = useCallback(async (number, isFavorite) => {
+    setFavorites((current) => (isFavorite ? current.filter((n) => n !== number) : [...current, number]));
+    try {
+      if (isFavorite) await api.removeFavorite(number);
+      else await api.addFavorite(number);
+    } catch {
+      setFavorites((current) => (isFavorite ? [...current, number] : current.filter((n) => n !== number)));
+    }
   }, []);
 
   useEffect(() => {
@@ -134,8 +149,9 @@ export default function Dashboard({ user, onLogout }) {
 
         <Header
           colors={colors}
-          companyName={COMPANY_NAME}
-          pbxName={PBX_NAME}
+          companyName={settings.companyName}
+          pbxName={settings.pbxName}
+          logoUrl={settings.logoUrl}
           statusPill={statusPill}
           connectionInfo={{ color: status.connection.connected ? colors.green : colors.red, label: status.connection.label }}
           lastUpdateLabel={lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -145,6 +161,7 @@ export default function Dashboard({ user, onLogout }) {
           onToggleTheme={() => setTheme(isDark ? 'light' : 'dark')}
           user={user}
           onLogout={onLogout}
+          onOpenSettings={() => setShowSettings(true)}
         />
 
         <HeroBanner colors={colors} banner={heroBanner} />
@@ -155,7 +172,15 @@ export default function Dashboard({ user, onLogout }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 16, alignItems: 'start' }}>
           <div ref={extensionsSectionRef}>
-            <ExtensionsPanel colors={colors} extensions={extensions} filter={extensionFilter} onFilterChange={toggleExtensionFilter} />
+            <ExtensionsPanel
+              colors={colors}
+              extensions={extensions}
+              filter={extensionFilter}
+              onFilterChange={toggleExtensionFilter}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+              onSelectExtension={setSelectedExtension}
+            />
           </div>
           <div ref={activeCallsSectionRef}>
             <ActiveCallsPanel colors={colors} calls={activeCalls} />
@@ -175,7 +200,28 @@ export default function Dashboard({ user, onLogout }) {
           <TodaySummaryPanel colors={colors} summary={todaySummary} />
         </div>
 
+        <CallHistoryPanel colors={colors} />
+
       </div>
+
+      {showSettings && (
+        <SettingsModal
+          colors={colors}
+          settings={settings}
+          onClose={() => setShowSettings(false)}
+          onSaved={reloadSettings}
+        />
+      )}
+
+      {selectedExtension && (
+        <ExtensionDetailModal
+          colors={colors}
+          number={selectedExtension}
+          favorite={favorites.includes(selectedExtension)}
+          onToggleFavorite={handleToggleFavorite}
+          onClose={() => setSelectedExtension(null)}
+        />
+      )}
     </div>
   );
 }
