@@ -22,6 +22,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved }) {
       await api.updateSettings({ companyName, pbxName });
       setMessage('Salvo!');
       onSaved?.();
+      setTimeout(onClose, 600);
     } catch (err) {
       setError(err.message || 'Não foi possível salvar.');
     } finally {

@@ -23,7 +23,10 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 
 // Logo enviado via upload — serve estático, sem autenticação (é só uma
 // imagem de marca, exibida inclusive no painel público e na tela de login).
-app.use('/uploads', express.static(path.resolve('data/uploads')));
+// Fica sob /api (e antes do requireAuth abaixo) para atravessar de graça o
+// mesmo proxy reverso que já encaminha /api/ — um caminho fora de /api não
+// é repassado pelas regras de Apache/Nginx do README, e a imagem quebra.
+app.use('/api/uploads', express.static(path.resolve('data/uploads')));
 
 app.use('/api/auth', authRouter);
 // Rota pública (sem autenticação) precisa vir ANTES do requireAuth abaixo,
