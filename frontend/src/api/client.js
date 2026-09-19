@@ -38,6 +38,11 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+export function resolveAssetUrl(path) {
+  if (!path) return '';
+  return `${API_URL}${path}`;
+}
+
 export const api = {
   login: (username, password) =>
     request('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
@@ -45,12 +50,38 @@ export const api = {
   status: () => request('/api/status'),
   extensions: () => request('/api/extensions'),
   extensionsSummary: () => request('/api/extensions/summary'),
+  extensionDetail: (number) => request(`/api/extensions/${encodeURIComponent(number)}`),
+  favorites: () => request('/api/extensions/favorites'),
+  addFavorite: (number) => request(`/api/extensions/${encodeURIComponent(number)}/favorite`, { method: 'POST' }),
+  removeFavorite: (number) => request(`/api/extensions/${encodeURIComponent(number)}/favorite`, { method: 'DELETE' }),
   activeCalls: () => request('/api/calls/active'),
   callsSummary: (range) => request(`/api/calls/summary?range=${range}`),
   todaySummary: () => request('/api/calls/today-summary'),
+  callsHistory: (params = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
+    return request(`/api/calls/history?${qs.toString()}`);
+  },
   alerts: () => request('/api/alerts'),
   serverHealth: () => request('/api/server/health'),
   publicDashboard: (range) => request(`/api/public/dashboard${range ? `?range=${range}` : ''}`),
+  publicSettings: () => request('/api/public/settings'),
+  settings: () => request('/api/settings'),
+  updateSettings: (partial) => request('/api/settings', { method: 'PUT', body: JSON.stringify(partial) }),
+  uploadLogo: async (file) => {
+    const token = getToken();
+    const form = new FormData();
+    form.append('logo', file);
+    const res = await fetch(`${API_URL}/api/settings/logo`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `Erro ${res.status}`);
+    }
+    return res.json();
+  },
 };
 
 export function connectLiveSocket(onMessage) {

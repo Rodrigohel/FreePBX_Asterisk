@@ -1,12 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'node:http';
+import path from 'node:path';
 import { WebSocketServer } from 'ws';
 import { config } from './config.js';
 import { amiClient } from './ami/amiClient.js';
 import { authRouter } from './routes/auth.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { publicRouter } from './routes/public.js';
+import { settingsRouter } from './routes/settings.js';
 import { requireAuth } from './middleware/auth.js';
 import { runAlertChecks } from './services/alertsService.js';
 import { getActiveCalls } from './services/callsService.js';
@@ -19,10 +21,15 @@ app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+// Logo enviado via upload — serve estático, sem autenticação (é só uma
+// imagem de marca, exibida inclusive no painel público e na tela de login).
+app.use('/uploads', express.static(path.resolve('data/uploads')));
+
 app.use('/api/auth', authRouter);
 // Rota pública (sem autenticação) precisa vir ANTES do requireAuth abaixo,
 // que protege todo o restante de /api.
 app.use('/api/public', publicRouter);
+app.use('/api/settings', requireAuth, settingsRouter);
 app.use('/api', requireAuth, dashboardRouter);
 
 const server = http.createServer(app);

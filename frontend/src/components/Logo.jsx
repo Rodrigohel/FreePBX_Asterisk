@@ -1,14 +1,13 @@
 import Icon from './Icon.jsx';
+import { resolveAssetUrl } from '../api/client.js';
 
-const LOGO_URL = import.meta.env.VITE_LOGO_URL || '';
-
-// Mostra o logo customizado (VITE_LOGO_URL) quando configurado; caso
-// contrário, cai no ícone padrão do painel.
-export default function Logo({ colors, size = 44 }) {
-  if (LOGO_URL) {
+// Mostra o logo configurado em Configurações (logoUrl vindo do backend)
+// quando existir; caso contrário, cai no ícone padrão do painel.
+export default function Logo({ colors, size = 44, logoUrl }) {
+  if (logoUrl) {
     return (
       <img
-        src={LOGO_URL}
+        src={resolveAssetUrl(logoUrl)}
         alt="Logo"
         style={{ width: size, height: size, borderRadius: 12, objectFit: 'contain', background: colors.primarySoft, flexShrink: 0 }}
       />

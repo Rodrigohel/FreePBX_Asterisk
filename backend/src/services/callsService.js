@@ -101,6 +101,85 @@ export async function getCallsSummary(range) {
   }
 }
 
+function directionOf(dcontext) {
+  return dcontext && dcontext.startsWith('from-internal') ? 'made' : 'received';
+}
+
+export async function getExtensionCallsToday(number, limit = 20) {
+  if (config.forceMock) {
+    return { data: [], source: 'mock' };
+  }
+  try {
+    const pool = await getCdrPool();
+    const [rows] = await pool.query(
+      `SELECT calldate, src, dst, disposition, billsec, dcontext
+       FROM cdr
+       WHERE calldate >= CURDATE() AND (src = ? OR dst = ?)
+       ORDER BY calldate DESC
+       LIMIT ?`,
+      [number, number, limit]
+    );
+    const data = rows.map((r) => ({
+      at: r.calldate,
+      src: r.src,
+      dst: r.dst,
+      disposition: r.disposition,
+      durationSeconds: r.billsec,
+      direction: directionOf(r.dcontext),
+    }));
+    return { data, source: 'cdr' };
+  } catch (err) {
+    return { data: [], source: 'mock', error: err.message };
+  }
+}
+
+export async function searchCallHistory({ q, from, to, page = 1, pageSize = 25 }) {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 25));
+  const offset = (safePage - 1) * safePageSize;
+  const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const toDate = to || new Date().toISOString().slice(0, 10);
+
+  if (config.forceMock) {
+    return { data: [], total: 0, page: safePage, pageSize: safePageSize, source: 'mock' };
+  }
+
+  try {
+    const pool = await getCdrPool();
+    const like = q ? `%${q}%` : null;
+    const whereClauses = ['calldate >= ?', 'calldate < DATE_ADD(?, INTERVAL 1 DAY)'];
+    const params = [fromDate, toDate];
+    if (like) {
+      whereClauses.push('(src LIKE ? OR dst LIKE ?)');
+      params.push(like, like);
+    }
+    const where = whereClauses.join(' AND ');
+
+    const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM cdr WHERE ${where}`, params);
+    const [rows] = await pool.query(
+      `SELECT calldate, src, dst, disposition, billsec, dcontext
+       FROM cdr
+       WHERE ${where}
+       ORDER BY calldate DESC
+       LIMIT ? OFFSET ?`,
+      [...params, safePageSize, offset]
+    );
+
+    const data = rows.map((r) => ({
+      at: r.calldate,
+      src: r.src,
+      dst: r.dst,
+      disposition: r.disposition,
+      durationSeconds: r.billsec,
+      direction: directionOf(r.dcontext),
+    }));
+
+    return { data, total: Number(total), page: safePage, pageSize: safePageSize, source: 'cdr' };
+  } catch (err) {
+    return { data: [], total: 0, page: safePage, pageSize: safePageSize, source: 'mock', error: err.message };
+  }
+}
+
 export async function getTodaySummary() {
   if (config.forceMock) {
     return { ...mockTodaySummary(), source: 'mock' };

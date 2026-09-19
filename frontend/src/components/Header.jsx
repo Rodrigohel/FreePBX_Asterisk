@@ -8,8 +8,8 @@ function initials(name) {
 }
 
 export default function Header({
-  colors, companyName, pbxName, statusPill, connectionInfo,
-  lastUpdateLabel, onRefresh, refreshing, isDark, onToggleTheme, user, onLogout,
+  colors, companyName, pbxName, logoUrl, statusPill, connectionInfo,
+  lastUpdateLabel, onRefresh, refreshing, isDark, onToggleTheme, user, onLogout, onOpenSettings,
 }) {
   return (
     <header style={{
@@ -17,7 +17,7 @@ export default function Header({
       background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '18px 22px', boxShadow: colors.shadow,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-        <Logo colors={colors} />
+        <Logo colors={colors} logoUrl={logoUrl} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 600, fontSize: 17, color: colors.textPrimary, lineHeight: 1.2 }}>{companyName}</div>
           <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>{pbxName}</div>
@@ -53,6 +53,14 @@ export default function Header({
           style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: colors.textSecondary }}
         >
           {isDark ? <Icon paths={ICONS.moon} size={16} strokeWidth={2} /> : <Icon paths={ICONS.sun} size={16} strokeWidth={2} />}
+        </button>
+
+        <button
+          onClick={onOpenSettings}
+          title="Configurações"
+          style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: colors.textSecondary }}
+        >
+          <Icon paths={ICONS.settings} size={16} strokeWidth={2} />
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 14, borderLeft: `1px solid ${colors.border}` }}>

@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { getStatus } from '../services/statusService.js';
-import { getExtensions, getExtensionsSummary } from '../services/extensionsService.js';
-import { getActiveCalls, getCallsSummary, getTodaySummary } from '../services/callsService.js';
+import { getExtensions, getExtensionsSummary, getExtensionDetail } from '../services/extensionsService.js';
+import { getActiveCalls, getCallsSummary, getTodaySummary, getExtensionCallsToday, searchCallHistory } from '../services/callsService.js';
 import { getAlerts, getActiveAlertsCount } from '../services/alertsService.js';
 import { getServerHealth } from '../services/healthService.js';
+import { getFavoriteNumbers, addFavorite, removeFavorite } from '../services/favoritesService.js';
 
 export const dashboardRouter = Router();
 
@@ -22,6 +23,28 @@ dashboardRouter.get('/extensions/summary', async (req, res) => {
   res.json(await getExtensionsSummary());
 });
 
+dashboardRouter.get('/extensions/favorites', (req, res) => {
+  res.json({ data: getFavoriteNumbers() });
+});
+
+dashboardRouter.post('/extensions/:number/favorite', (req, res) => {
+  addFavorite(req.params.number);
+  res.json({ ok: true });
+});
+
+dashboardRouter.delete('/extensions/:number/favorite', (req, res) => {
+  removeFavorite(req.params.number);
+  res.json({ ok: true });
+});
+
+dashboardRouter.get('/extensions/:number', async (req, res) => {
+  const [detail, callsToday] = await Promise.all([
+    getExtensionDetail(req.params.number),
+    getExtensionCallsToday(req.params.number),
+  ]);
+  res.json({ ...detail, callsToday: callsToday.data });
+});
+
 dashboardRouter.get('/calls/active', async (req, res) => {
   const { data, source, error } = await getActiveCalls();
   res.json({ data, source, error });
@@ -34,6 +57,11 @@ dashboardRouter.get('/calls/summary', async (req, res) => {
 
 dashboardRouter.get('/calls/today-summary', async (req, res) => {
   res.json(await getTodaySummary());
+});
+
+dashboardRouter.get('/calls/history', async (req, res) => {
+  const { q, from, to, page, pageSize } = req.query;
+  res.json(await searchCallHistory({ q, from, to, page, pageSize }));
 });
 
 dashboardRouter.get('/alerts', async (req, res) => {

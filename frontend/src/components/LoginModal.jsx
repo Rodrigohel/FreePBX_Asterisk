@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Logo from './Logo.jsx';
 
-export default function LoginModal({ colors, onLogin, onClose }) {
+export default function LoginModal({ colors, onLogin, onClose, logoUrl }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -43,7 +43,7 @@ export default function LoginModal({ colors, onLogin, onClose }) {
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <Logo colors={colors} />
+          <Logo colors={colors} logoUrl={logoUrl} />
           <div>
             <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, color: colors.textPrimary }}>Entrar</div>
             <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Acesse o painel completo</div>

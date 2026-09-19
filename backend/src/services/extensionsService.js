@@ -1,7 +1,8 @@
 import { amiClient } from '../ami/amiClient.js';
 import { getPbxDbPool } from './pbxDbClient.js';
 import { config } from '../config.js';
-import { recordExtensionState } from './extensionState.js';
+import { recordExtensionState, getLastSeenOnline, getDowntimeEvents, getOfflineCountSince } from './extensionState.js';
+import { isFavorite } from './favoritesService.js';
 import { mockExtensions, mockExtensionsSummary } from './mockData.js';
 
 // DeviceState do PJSIP -> estado usado pelo dashboard
@@ -42,7 +43,7 @@ export async function getExtensions() {
   if (config.forceMock || !amiClient.isConnected()) {
     const list = mockExtensions();
     list.forEach((e) => recordExtensionState(e.number, e.state, e.name));
-    return { data: list, source: 'mock' };
+    return { data: list.map((e) => ({ ...e, favorite: isFavorite(e.number) })), source: 'mock' };
   }
 
   try {
@@ -55,17 +56,34 @@ export async function getExtensions() {
       const state = mapDeviceState(evt.devicestate);
       const name = names[number] || `Ramal ${number}`;
       recordExtensionState(number, state, name);
-      const lastActivity = state === 'offline'
-        ? new Date().toISOString()
+      // Para ramais offline, mostra desde quando (persistido); para os
+      // demais, a última atividade é "agora" pois acabamos de confirmá-los.
+      const lastSeenOnline = getLastSeenOnline(number);
+      const lastActivity = state === 'offline' && lastSeenOnline
+        ? new Date(lastSeenOnline).toISOString()
         : new Date().toISOString();
-      return { number, name, state, lastActivity };
+      return { number, name, state, lastActivity, favorite: isFavorite(number) };
     });
 
     return { data: extensions, source: 'ami' };
   } catch (err) {
     const list = mockExtensions();
-    return { data: list, source: 'mock', error: err.message };
+    return { data: list.map((e) => ({ ...e, favorite: isFavorite(e.number) })), source: 'mock', error: err.message };
   }
+}
+
+export async function getExtensionDetail(number) {
+  const { data } = await getExtensions();
+  const ext = data.find((e) => e.number === number) || null;
+  const lastSeenOnline = getLastSeenOnline(number);
+  const since7days = new Date(Date.now() - 7 * 86400000).toISOString();
+
+  return {
+    extension: ext,
+    offlineSince: ext && ext.state === 'offline' && lastSeenOnline ? new Date(lastSeenOnline).toISOString() : null,
+    downtimeEvents: getDowntimeEvents(number, 20),
+    offlineCount7d: getOfflineCountSince(number, since7days),
+  };
 }
 
 export async function getExtensionsSummary() {
