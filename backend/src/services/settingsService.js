@@ -12,6 +12,7 @@ const DEFAULTS = {
   logoUrl: '',
   alertExtensionOfflineMinutes: String(process.env.ALERT_EXTENSION_OFFLINE_MINUTES || 120),
   alertDiskUsagePercent: String(process.env.ALERT_DISK_USAGE_PERCENT || 80),
+  alertReminderIntervalMinutes: String(process.env.ALERT_REMINDER_INTERVAL_MINUTES || 60),
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
   telegramChatId: process.env.TELEGRAM_CHAT_ID || '',
 };
