@@ -24,7 +24,8 @@ db.exec(`
     message TEXT NOT NULL,
     created_at TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',
-    source_key TEXT
+    source_key TEXT,
+    last_notified_at TEXT
   );
 
   -- Último estado conhecido de cada ramal, persistido para sobreviver a
@@ -58,3 +59,10 @@ db.exec(`
     value TEXT
   );
 `);
+
+// Migração leve: `CREATE TABLE IF NOT EXISTS` acima não adiciona colunas
+// novas a um banco já existente — precisa de ALTER TABLE explícito.
+const alertsColumns = db.prepare('PRAGMA table_info(alerts)').all().map((c) => c.name);
+if (!alertsColumns.includes('last_notified_at')) {
+  db.exec('ALTER TABLE alerts ADD COLUMN last_notified_at TEXT');
+}
