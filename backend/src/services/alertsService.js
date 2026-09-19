@@ -13,12 +13,29 @@ const upsertStmt = db.prepare(`
   ON CONFLICT(id) DO UPDATE SET status = @status, message = @message
 `);
 const resolveBySourceStmt = db.prepare(`UPDATE alerts SET status = 'resolved' WHERE source_key = ? AND status = 'active'`);
-const getByIdStmt = db.prepare(`SELECT status FROM alerts WHERE id = ?`);
-const getActiveBySourceStmt = db.prepare(`SELECT message FROM alerts WHERE source_key = ? AND status = 'active'`);
+const getByIdStmt = db.prepare(`SELECT status, last_notified_at FROM alerts WHERE id = ?`);
+const getActiveBySourceStmt = db.prepare(`SELECT id, message, last_notified_at FROM alerts WHERE source_key = ? AND status = 'active'`);
+const touchNotifiedStmt = db.prepare(`UPDATE alerts SET last_notified_at = ? WHERE id = ?`);
 const listStmt = db.prepare(`SELECT * FROM alerts ORDER BY created_at DESC LIMIT 50`);
 const countActiveStmt = db.prepare(`SELECT COUNT(*) AS n FROM alerts WHERE status = 'active'`);
 
 const SEVERITY_EMOJI = { critical: '🔴', warning: '🟠', info: 'ℹ️' };
+
+// Ramais com conexão instável (ex.: intercomunicador em link celular)
+// podem oscilar offline/online várias vezes seguidas — sem esse intervalo
+// mínimo, cada oscilação dispararia um novo "ativo" + "resolvido" no
+// Telegram, mesmo que o problema seja o mesmo de minutos atrás.
+const NOTIFY_COOLDOWN_MS = 10 * 60 * 1000;
+
+function canNotify(lastNotifiedAt) {
+  if (!lastNotifiedAt) return true;
+  return Date.now() - new Date(lastNotifiedAt).getTime() >= NOTIFY_COOLDOWN_MS;
+}
+
+function notify(id, text) {
+  sendTelegramMessage(text);
+  touchNotifiedStmt.run(new Date().toISOString(), id);
+}
 
 // Só notifica quando o alerta vira ativo pela primeira vez (ou é
 // reativado depois de resolvido) — sem isso o Telegram tocaria a cada
@@ -26,16 +43,17 @@ const SEVERITY_EMOJI = { critical: '🔴', warning: '🟠', info: 'ℹ️' };
 function upsertAlert({ id, severity, message, status, source_key }) {
   const existing = getByIdStmt.get(id);
   upsertStmt.run({ id, severity, message, created_at: new Date().toISOString(), status, source_key });
-  if (status === 'active' && (!existing || existing.status === 'resolved')) {
-    sendTelegramMessage(`${SEVERITY_EMOJI[severity] || '⚠️'} ${message}`);
+  const justActivated = status === 'active' && (!existing || existing.status === 'resolved');
+  if (justActivated && canNotify(existing?.last_notified_at)) {
+    notify(id, `${SEVERITY_EMOJI[severity] || '⚠️'} ${message}`);
   }
 }
 
 function resolveAlert(sourceKey) {
   const activeAlert = getActiveBySourceStmt.get(sourceKey);
   const info = resolveBySourceStmt.run(sourceKey);
-  if (info.changes > 0 && activeAlert) {
-    sendTelegramMessage(`✅ Resolvido: ${activeAlert.message}`);
+  if (info.changes > 0 && activeAlert && canNotify(activeAlert.last_notified_at)) {
+    notify(activeAlert.id, `✅ Resolvido: ${activeAlert.message}`);
   }
 }
 
