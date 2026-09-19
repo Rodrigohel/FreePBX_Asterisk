@@ -3,19 +3,20 @@ import Icon, { ICONS } from './Icon.jsx';
 export default function HeroBanner({ colors, banner }) {
   return (
     <div style={{
-      background: banner.gradient || banner.bg, border: `1px solid ${banner.border}`, borderRadius: 16, padding: '18px 22px',
-      display: 'flex', alignItems: 'center', gap: 14, boxShadow: colors.shadow, animation: 'fadeInUp .4s ease both',
+      background: banner.gradient || banner.bg, border: `1px solid ${banner.border}`, borderRadius: 18, padding: '20px 24px',
+      display: 'flex', alignItems: 'center', gap: 16, boxShadow: colors.shadow, animation: 'fadeInUp .4s ease both',
       position: 'relative', overflow: 'hidden',
     }}>
       <div style={{
-        width: 40, height: 40, borderRadius: 99, background: banner.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        width: 44, height: 44, borderRadius: 99, background: banner.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        boxShadow: `0 6px 16px -4px ${banner.iconBg}`,
         animation: banner.urgent ? 'pulseRing 1.8s ease-out infinite' : 'none',
       }}>
-        <Icon paths={banner.iconPaths} size={20} color={banner.iconColor} strokeWidth={2.4} />
+        <Icon paths={banner.iconPaths} size={21} color={banner.iconColor} strokeWidth={2.4} />
       </div>
       <div>
-        <div style={{ fontSize: 15.5, fontWeight: 700, color: colors.textPrimary, fontFamily: "'Space Grotesk',sans-serif" }}>{banner.title}</div>
-        <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>{banner.subtitle}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: colors.textPrimary, fontFamily: "'Space Grotesk',sans-serif" }}>{banner.title}</div>
+        <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 3 }}>{banner.subtitle}</div>
       </div>
     </div>
   );
