@@ -19,6 +19,26 @@ const TOWER_FILTERS = [
   { value: 'common', label: GROUP_LABELS.common },
 ];
 
+// "Realizada"/"Recebida" baseado no dcontext do Asterisk não faz sentido
+// pra uma ligação interna (porteiro -> apartamento, apartamento ->
+// apartamento): dependeria de qual lado é "quem ligou", que é ambíguo sem
+// contexto. Em vez disso, classificamos pelo que já sabemos de cada ponta
+// (é um ramal do condomínio ou um número de fora):
+// interna (os dois lados são ramal conhecido), saída (ramal ligou pra
+// fora) ou entrada (alguém de fora ligou pro condomínio).
+function classifyDirection(fromParty, toParty) {
+  if (fromParty.isInternal && toParty.isInternal) return { key: 'internal', label: 'Interna' };
+  if (fromParty.isInternal && !toParty.isInternal) return { key: 'outbound', label: 'Saída' };
+  if (!fromParty.isInternal && toParty.isInternal) return { key: 'inbound', label: 'Entrada' };
+  return { key: 'unknown', label: '—' };
+}
+
+function DirectionIcon({ colors, direction }) {
+  if (direction.key === 'outbound') return <Icon paths={ICONS.callOutbound} size={13} color={colors.textTertiary} strokeWidth={2} />;
+  if (direction.key === 'inbound') return <Icon paths={ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />;
+  return <Icon paths={ICONS.phoneRow} size={13} color={colors.textTertiary} strokeWidth={2} />;
+}
+
 function dispositionColor(colors, disposition) {
   if (disposition === 'ANSWERED') return colors.green;
   if (disposition === 'NO ANSWER' || disposition === 'BUSY') return colors.amber;
@@ -113,7 +133,7 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
       const enriched = await fetchEnrichedExport();
       const csvRows = enriched.map(({ call, from: fromParty, to: toParty }) => [
         new Date(call.at).toLocaleString('pt-BR'),
-        call.direction === 'made' ? 'Realizada' : 'Recebida',
+        classifyDirection(fromParty, toParty).label,
         fromParty.isInternal ? fromParty.label : '',
         fromParty.number,
         fromParty.detail || '',
@@ -142,7 +162,7 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
       const enriched = await fetchEnrichedExport();
       const pdfRows = enriched.map(({ call, from: fromParty, to: toParty }) => [
         new Date(call.at).toLocaleString('pt-BR'),
-        call.direction === 'made' ? 'Realizada' : 'Recebida',
+        classifyDirection(fromParty, toParty).label,
         partyText(fromParty),
         partyText(toParty),
         DISPOSITION_LABEL[call.disposition] || call.disposition,
@@ -242,25 +262,29 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
         {!loading && rows.length === 0 && (
           <div style={{ padding: '16px 2px', fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>Nenhuma chamada encontrada.</div>
         )}
-        {!loading && rows.map(({ call, from: fromParty, to: toParty }, i) => (
-          <div key={i} style={{ padding: '10px 2px', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Icon paths={call.direction === 'made' ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
-              <div style={{ flex: '1 1 0', minWidth: 0 }}>
-                <PartyLabel colors={colors} party={fromParty} align="left" />
+        {!loading && rows.map(({ call, from: fromParty, to: toParty }, i) => {
+          const direction = classifyDirection(fromParty, toParty);
+          return (
+            <div key={i} style={{ padding: '10px 2px', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <DirectionIcon colors={colors} direction={direction} />
+                <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                  <PartyLabel colors={colors} party={fromParty} align="left" />
+                </div>
+                <Icon paths={['M5 12h14', 'M13 6l6 6-6 6']} size={12} color={colors.textTertiary} strokeWidth={2} />
+                <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                  <PartyLabel colors={colors} party={toParty} align="left" />
+                </div>
               </div>
-              <Icon paths={['M5 12h14', 'M13 6l6 6-6 6']} size={12} color={colors.textTertiary} strokeWidth={2} />
-              <div style={{ flex: '1 1 0', minWidth: 0 }}>
-                <PartyLabel colors={colors} party={toParty} align="left" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 5, paddingLeft: 21 }}>
+                <span style={{ color: colors.textTertiary, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3 }}>{direction.label}</span>
+                <span style={{ color: dispositionColor(colors, call.disposition), fontWeight: 600, fontSize: 12 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
+                <span style={{ color: colors.textTertiary, fontSize: 12 }}>{formatDuration(call.durationSeconds)}</span>
+                <span style={{ color: colors.textTertiary, fontSize: 12, marginLeft: 'auto' }}>{new Date(call.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 5, paddingLeft: 21 }}>
-              <span style={{ color: dispositionColor(colors, call.disposition), fontWeight: 600, fontSize: 12 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
-              <span style={{ color: colors.textTertiary, fontSize: 12 }}>{formatDuration(call.durationSeconds)}</span>
-              <span style={{ color: colors.textTertiary, fontSize: 12, marginLeft: 'auto' }}>{new Date(call.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {result.total > 0 && (

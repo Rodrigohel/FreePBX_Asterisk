@@ -15,6 +15,7 @@ import SettingsModal from '../components/SettingsModal.jsx';
 import ExtensionDetailModal from '../components/ExtensionDetailModal.jsx';
 import CallHistoryPanel from '../components/CallHistoryPanel.jsx';
 import MissedCallsPanel from '../components/MissedCallsPanel.jsx';
+import FailuresReportPanel from '../components/FailuresReportPanel.jsx';
 
 const THEME_KEY = 'pbx_dashboard_theme';
 
@@ -202,6 +203,8 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
         </div>
 
         <MissedCallsPanel colors={colors} extensions={extensions} />
+
+        <FailuresReportPanel colors={colors} extensions={extensions} />
 
         <CallHistoryPanel colors={colors} extensions={extensions} />
 

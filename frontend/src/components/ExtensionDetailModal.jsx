@@ -129,14 +129,21 @@ export default function ExtensionDetailModal({ colors, number, onClose, favorite
                 <div style={{ fontSize: 13, color: colors.textTertiary }}>Nenhuma chamada hoje.</div>
               )}
               {detail.callsToday.map((call, i) => {
-                const otherNumber = call.direction === 'made' ? call.dst : call.src;
+                // Não usa call.direction (baseado no dcontext do Asterisk):
+                // isso reflete se QUEM LIGOU era um ramal interno, não se
+                // foi ESTE ramal — numa ligação interna (ex.: porteiro
+                // chamando outro ramal), dava "Ligou para" mesmo quando
+                // este ramal foi quem recebeu. Comparar direto com o
+                // próprio número é o que realmente diz quem ligou pra quem.
+                const isOutgoing = call.src === ext.number;
+                const otherNumber = isOutgoing ? call.dst : call.src;
                 const party = describeCallParty(otherNumber, directory);
                 return (
                   <div key={i} style={{ padding: '6px 0', fontSize: 13, borderBottom: i < detail.callsToday.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Icon paths={call.direction === 'made' ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
+                      <Icon paths={isOutgoing ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
                       <span style={{ color: colors.textPrimary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {call.direction === 'made' ? 'Ligou para ' : 'Recebeu de '}
+                        {isOutgoing ? 'Ligou para ' : 'Recebeu de '}
                         <strong>{party.label}</strong>
                         {party.isInternal && <span style={{ color: colors.textTertiary, fontWeight: 400 }}> ({party.number}{party.detail ? ` · ${party.detail}` : ''})</span>}
                       </span>

@@ -58,6 +58,10 @@ export const api = {
   callsSummary: (range) => request(`/api/calls/summary?range=${range}`),
   todaySummary: () => request('/api/calls/today-summary'),
   missedCallsToday: () => request('/api/calls/missed-today'),
+  extensionFailures: (params = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
+    return request(`/api/extensions/failures/report?${qs.toString()}`);
+  },
   callsHistory: (params = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
     return request(`/api/calls/history?${qs.toString()}`);

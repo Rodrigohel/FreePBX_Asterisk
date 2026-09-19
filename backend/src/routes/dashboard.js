@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getStatus } from '../services/statusService.js';
 import { getExtensions, getExtensionsSummary, getExtensionDetail } from '../services/extensionsService.js';
+import { getDowntimeReport } from '../services/extensionState.js';
 import { getActiveCalls, getCallsSummary, getTodaySummary, getExtensionCallsToday, searchCallHistory, exportCallHistory, getMissedCallsToday } from '../services/callsService.js';
 import { getAlerts, getActiveAlertsCount } from '../services/alertsService.js';
 import { getServerHealth } from '../services/healthService.js';
@@ -71,6 +72,11 @@ dashboardRouter.get('/calls/history/export', async (req, res) => {
 
 dashboardRouter.get('/calls/missed-today', async (req, res) => {
   res.json(await getMissedCallsToday());
+});
+
+dashboardRouter.get('/extensions/failures/report', (req, res) => {
+  const { from, to } = req.query;
+  res.json({ data: getDowntimeReport({ from, to }) });
 });
 
 dashboardRouter.get('/alerts', async (req, res) => {
