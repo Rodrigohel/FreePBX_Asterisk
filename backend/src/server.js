@@ -80,9 +80,26 @@ if (!config.forceMock) {
 // Loop de atualização em tempo real via WS (independe do polling REST do frontend)
 setInterval(pushLiveUpdate, 5000);
 
-// Monitor de alertas/saúde em background
-setInterval(runAlertChecks, config.monitorIntervalMs);
-runAlertChecks();
+// Monitor de alertas/saúde em background. Reagenda a si mesmo em vez de usar
+// setInterval: como runAlertChecks é assíncrono (AMI, banco, e a chamada de
+// rede pro Telegram quando há alerta pra notificar), uma checagem que demora
+// mais que o intervalo configurado poderia se sobrepor à próxima — duas
+// rodadas concorrentes mexendo nas mesmas linhas da tabela `alerts` podiam
+// intercalar leituras/escritas fora de ordem (ex.: uma rodada com dado
+// desatualizado ainda achando o ramal offline, rodando depois de outra que já
+// tinha marcado como resolvido) e mandar notificações fora de ordem no
+// Telegram. Encadeando com setTimeout, a próxima checagem só começa depois
+// que a anterior realmente terminou.
+async function scheduleAlertChecks() {
+  try {
+    await runAlertChecks();
+  } catch (err) {
+    console.error('[alerts] erro ao verificar alertas:', err && err.message ? err.message : err);
+  } finally {
+    setTimeout(scheduleAlertChecks, config.monitorIntervalMs);
+  }
+}
+scheduleAlertChecks();
 
 server.listen(config.port, () => {
   console.log(`[dashboard-backend] ouvindo em http://localhost:${config.port} (mock=${config.forceMock})`);
