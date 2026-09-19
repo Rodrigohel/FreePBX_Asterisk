@@ -10,7 +10,7 @@ import { dashboardRouter } from './routes/dashboard.js';
 import { publicRouter } from './routes/public.js';
 import { settingsRouter } from './routes/settings.js';
 import { usersRouter } from './routes/users.js';
-import { requireAuth } from './middleware/auth.js';
+import { requireAuth, requireAdmin } from './middleware/auth.js';
 import { runAlertChecks } from './services/alertsService.js';
 import { getActiveCalls } from './services/callsService.js';
 import { getExtensions } from './services/extensionsService.js';
@@ -33,8 +33,8 @@ app.use('/api/auth', authRouter);
 // Rota pública (sem autenticação) precisa vir ANTES do requireAuth abaixo,
 // que protege todo o restante de /api.
 app.use('/api/public', publicRouter);
-app.use('/api/settings', requireAuth, settingsRouter);
-app.use('/api/users', requireAuth, usersRouter);
+app.use('/api/settings', requireAuth, requireAdmin, settingsRouter);
+app.use('/api/users', requireAuth, requireAdmin, usersRouter);
 app.use('/api', requireAuth, dashboardRouter);
 
 const server = http.createServer(app);

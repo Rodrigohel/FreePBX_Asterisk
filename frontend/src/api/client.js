@@ -62,6 +62,10 @@ export const api = {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
     return request(`/api/calls/history?${qs.toString()}`);
   },
+  exportCallHistory: (params = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
+    return request(`/api/calls/history/export?${qs.toString()}`);
+  },
   alerts: () => request('/api/alerts'),
   serverHealth: () => request('/api/server/health'),
   publicDashboard: (range) => request(`/api/public/dashboard${range ? `?range=${range}` : ''}`),

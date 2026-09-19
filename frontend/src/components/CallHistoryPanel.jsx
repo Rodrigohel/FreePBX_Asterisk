@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
 import { buildExtensionDirectory, describeCallParty, GROUP_LABELS } from '../utils/extensionDirectory.js';
+import { toCsv, downloadCsv } from '../utils/csv.js';
 
 const DISPOSITION_LABEL = {
   ANSWERED: 'Atendida',
@@ -61,6 +62,8 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState({ data: [], total: 0, pageSize: 25 });
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   const directory = useMemo(() => buildExtensionDirectory(extensions), [extensions]);
 
@@ -83,6 +86,44 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
     e.preventDefault();
     setPage(1);
     search({ q, from, to, page: 1, pageSize: 25 });
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    setExportError('');
+    try {
+      const { data } = await api.exportCallHistory({ q, from, to });
+      const enriched = data
+        .map((call) => ({ call, from: describeCallParty(call.src, directory), to: describeCallParty(call.dst, directory) }))
+        .filter(({ from: fromParty, to: toParty }) => tower === 'all' || fromParty.groupKey === tower || toParty.groupKey === tower);
+
+      if (enriched.length === 0) {
+        setExportError('Nenhuma chamada encontrada nesse filtro pra exportar.');
+        return;
+      }
+
+      const csvRows = enriched.map(({ call, from: fromParty, to: toParty }) => [
+        new Date(call.at).toLocaleString('pt-BR'),
+        call.direction === 'made' ? 'Realizada' : 'Recebida',
+        fromParty.isInternal ? fromParty.label : '',
+        fromParty.number,
+        fromParty.detail || '',
+        toParty.isInternal ? toParty.label : '',
+        toParty.number,
+        toParty.detail || '',
+        DISPOSITION_LABEL[call.disposition] || call.disposition,
+        call.durationSeconds ?? 0,
+      ]);
+      const csv = toCsv(
+        ['Data/Hora', 'Direção', 'De (nome)', 'De (número)', 'De (torre/apto)', 'Para (nome)', 'Para (número)', 'Para (torre/apto)', 'Status', 'Duração (s)'],
+        csvRows
+      );
+      downloadCsv(`chamadas_${from}_a_${to}.csv`, csv);
+    } catch (err) {
+      setExportError(err.message || 'Não foi possível exportar.');
+    } finally {
+      setExporting(false);
+    }
   }
 
   const totalPages = Math.max(1, Math.ceil(result.total / (result.pageSize || 25)));
@@ -128,13 +169,25 @@ export default function CallHistoryPanel({ colors, extensions = [] }) {
         </button>
       </form>
 
-      <select
-        value={tower}
-        onChange={(e) => setTower(e.target.value)}
-        style={{ padding: '7px 10px', borderRadius: 10, border: `1px solid ${colors.border}`, fontSize: 12.5, fontFamily: 'inherit', background: colors.bgCardAlt, color: colors.textPrimary, marginBottom: 12 }}
-      >
-        {TOWER_FILTERS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-      </select>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+        <select
+          value={tower}
+          onChange={(e) => setTower(e.target.value)}
+          style={{ padding: '7px 10px', borderRadius: 10, border: `1px solid ${colors.border}`, fontSize: 12.5, fontFamily: 'inherit', background: colors.bgCardAlt, color: colors.textPrimary }}
+        >
+          {TOWER_FILTERS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+        </select>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={exporting}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, cursor: exporting ? 'default' : 'pointer' }}
+        >
+          <Icon paths={ICONS.chevronDown} size={13} strokeWidth={2.2} />
+          {exporting ? 'Exportando...' : 'Exportar CSV'}
+        </button>
+      </div>
+      {exportError && <div style={{ color: colors.red, fontSize: 12.5, marginTop: -6, marginBottom: 10 }}>{exportError}</div>}
 
       <div style={{ display: 'flex', flexDirection: 'column', borderTop: `1px solid ${colors.border}` }}>
         {loading && (
