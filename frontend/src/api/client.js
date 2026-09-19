@@ -76,6 +76,7 @@ export const api = {
   publicSettings: () => request('/api/public/settings'),
   settings: () => request('/api/settings'),
   updateSettings: (partial) => request('/api/settings', { method: 'PUT', body: JSON.stringify(partial) }),
+  testTelegram: (partial) => request('/api/settings/telegram/test', { method: 'POST', body: JSON.stringify(partial) }),
   uploadLogo: async (file) => {
     const token = getToken();
     const form = new FormData();

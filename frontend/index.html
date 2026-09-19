@@ -59,6 +59,15 @@
     @media (max-width: 640px) {
       .app-main-content { padding: 16px 16px 48px !important; }
     }
+
+    /* dvh acompanha a altura visível de verdade no celular (o vh comum é
+       calculado com a barra de endereço escondida, então o modal pode
+       ficar maior que a tela de fato disponível); vh continua como
+       fallback pra navegadores mais antigos que não conhecem dvh. */
+    .settings-modal-card { max-height: 85vh; }
+    @supports (height: 100dvh) {
+      .settings-modal-card { max-height: 85dvh; }
+    }
   </style>
 </head>
 <body>
