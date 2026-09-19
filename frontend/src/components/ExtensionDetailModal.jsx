@@ -129,7 +129,10 @@ export default function ExtensionDetailModal({ colors, number, onClose, favorite
               {detail.callsToday.map((call, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 13, borderBottom: i < detail.callsToday.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
                   <Icon paths={call.direction === 'made' ? ICONS.callOutbound : ICONS.callInbound} size={13} color={colors.textTertiary} strokeWidth={2} />
-                  <span style={{ color: colors.textPrimary }}>{call.direction === 'made' ? call.dst : call.src}</span>
+                  <span style={{ color: colors.textPrimary }}>
+                    {call.direction === 'made' ? 'Ligou para ' : 'Recebeu de '}
+                    <strong>{call.direction === 'made' ? call.dst : call.src}</strong>
+                  </span>
                   <span style={{ color: colors.textTertiary, fontSize: 12 }}>{DISPOSITION_LABEL[call.disposition] || call.disposition}</span>
                   <span style={{ marginLeft: 'auto', color: colors.textTertiary, fontSize: 12 }}>{formatDuration(call.durationSeconds)}</span>
                   <span style={{ color: colors.textTertiary, fontSize: 12, width: 68, textAlign: 'right', flexShrink: 0 }}>{new Date(call.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
