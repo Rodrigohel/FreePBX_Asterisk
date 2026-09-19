@@ -55,13 +55,15 @@ export default function Header({
           {isDark ? <Icon paths={ICONS.moon} size={16} strokeWidth={2} /> : <Icon paths={ICONS.sun} size={16} strokeWidth={2} />}
         </button>
 
-        <button
-          onClick={onOpenSettings}
-          title="Configurações"
-          style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: colors.textSecondary }}
-        >
-          <Icon paths={ICONS.settings} size={16} strokeWidth={2} />
-        </button>
+        {onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            title="Configurações"
+            style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: colors.textSecondary }}
+          >
+            <Icon paths={ICONS.settings} size={16} strokeWidth={2} />
+          </button>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 14, borderLeft: `1px solid ${colors.border}` }}>
           <div style={{ width: 32, height: 32, borderRadius: 99, background: colors.primary, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif" }}>

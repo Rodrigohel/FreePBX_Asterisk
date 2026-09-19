@@ -16,3 +16,12 @@ export function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Token inválido ou expirado' });
   }
 }
+
+// Usa depois de requireAuth: bloqueia configurações e gestão de usuários
+// para contas que não são administradoras.
+export function requireAdmin(req, res, next) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Apenas administradores podem fazer isso.' });
+  }
+  next();
+}

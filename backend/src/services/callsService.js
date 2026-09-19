@@ -180,6 +180,52 @@ export async function searchCallHistory({ q, from, to, page = 1, pageSize = 25 }
   }
 }
 
+// Mesma busca de searchCallHistory, mas sem paginação — usado pra exportar
+// um relatório em CSV. Limitado a 5000 linhas por chamada como proteção
+// contra períodos gigantes sem filtro.
+export async function exportCallHistory({ q, from, to }) {
+  const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const toDate = to || new Date().toISOString().slice(0, 10);
+
+  if (config.forceMock) {
+    return { data: [], source: 'mock' };
+  }
+
+  try {
+    const pool = await getCdrPool();
+    const like = q ? `%${q}%` : null;
+    const whereClauses = ['calldate >= ?', 'calldate < DATE_ADD(?, INTERVAL 1 DAY)'];
+    const params = [fromDate, toDate];
+    if (like) {
+      whereClauses.push('(src LIKE ? OR dst LIKE ?)');
+      params.push(like, like);
+    }
+    const where = whereClauses.join(' AND ');
+
+    const [rows] = await pool.query(
+      `SELECT calldate, src, dst, disposition, billsec, dcontext
+       FROM cdr
+       WHERE ${where}
+       ORDER BY calldate DESC
+       LIMIT 5000`,
+      params
+    );
+
+    const data = rows.map((r) => ({
+      at: r.calldate,
+      src: r.src,
+      dst: r.dst,
+      disposition: r.disposition,
+      durationSeconds: r.billsec,
+      direction: directionOf(r.dcontext),
+    }));
+
+    return { data, source: 'cdr' };
+  } catch (err) {
+    return { data: [], source: 'mock', error: err.message };
+  }
+}
+
 // Chamadas não atendidas hoje, agrupadas por ramal de destino — útil pra
 // portaria ver quais unidades não atenderam quando ligaram (ex.: visitante
 // ou entrega na portaria, morador não atendeu o interfone).

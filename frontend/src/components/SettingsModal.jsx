@@ -28,6 +28,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
   const [newUsername, setNewUsername] = useState('');
   const [newDisplayName, setNewDisplayName] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [userError, setUserError] = useState('');
   const [addingUser, setAddingUser] = useState(false);
 
@@ -93,10 +94,14 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
     setUserError('');
     setAddingUser(true);
     try {
-      await api.createUser({ username: newUsername, displayName: newDisplayName, password: newPassword });
+      await api.createUser({
+        username: newUsername, displayName: newDisplayName, password: newPassword,
+        role: newIsAdmin ? 'admin' : 'user',
+      });
       setNewUsername('');
       setNewDisplayName('');
       setNewPassword('');
+      setNewIsAdmin(false);
       loadUsers();
     } catch (err) {
       setUserError(err.message || 'Não foi possível criar o usuário.');
@@ -201,6 +206,13 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
               <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
                 <span style={{ fontWeight: 600, color: colors.textPrimary }}>{u.displayName}</span>
                 <span style={{ color: colors.textTertiary, fontSize: 12 }}>@{u.username}</span>
+                <span style={{
+                  fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, padding: '2px 7px', borderRadius: 99,
+                  color: u.role === 'admin' ? colors.primary : colors.textTertiary,
+                  background: u.role === 'admin' ? colors.primarySoft : colors.graySoft,
+                }}>
+                  {u.role === 'admin' ? 'Admin' : 'Usuário'}
+                </span>
                 {u.username !== currentUsername && (
                   <button
                     type="button"
@@ -240,6 +252,10 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
             minLength={6}
             style={inputStyle(colors)}
           />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.textPrimary, marginBottom: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={newIsAdmin} onChange={(e) => setNewIsAdmin(e.target.checked)} />
+            Administrador (pode editar Configurações e usuários)
+          </label>
           {userError && <div style={{ color: colors.red, fontSize: 13, marginBottom: 10 }}>{userError}</div>}
           <button
             type="submit"

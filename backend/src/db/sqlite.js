@@ -15,6 +15,7 @@ db.exec(`
     username TEXT UNIQUE NOT NULL,
     display_name TEXT NOT NULL,
     password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'admin',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -65,4 +66,12 @@ db.exec(`
 const alertsColumns = db.prepare('PRAGMA table_info(alerts)').all().map((c) => c.name);
 if (!alertsColumns.includes('last_notified_at')) {
   db.exec('ALTER TABLE alerts ADD COLUMN last_notified_at TEXT');
+}
+
+// Idem para `role`: usuários criados antes desta versão viram 'admin' por
+// padrão (DEFAULT da coluna), preservando o acesso que já tinham — só
+// contas novas, criadas depois, é que nascem como usuário comum por padrão.
+const usersColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+if (!usersColumns.includes('role')) {
+  db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'");
 }

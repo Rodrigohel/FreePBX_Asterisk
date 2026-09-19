@@ -162,7 +162,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
           onToggleTheme={() => setTheme(isDark ? 'light' : 'dark')}
           user={user}
           onLogout={onLogout}
-          onOpenSettings={() => setShowSettings(true)}
+          onOpenSettings={user?.role === 'admin' ? () => setShowSettings(true) : undefined}
         />
 
         <HeroBanner colors={colors} banner={heroBanner} />

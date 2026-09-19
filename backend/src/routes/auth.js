@@ -19,14 +19,14 @@ authRouter.post('/login', (req, res) => {
   }
 
   const token = jwt.sign(
-    { sub: user.id, username: user.username, displayName: user.display_name },
+    { sub: user.id, username: user.username, displayName: user.display_name, role: user.role },
     config.auth.jwtSecret,
     { expiresIn: config.auth.jwtExpiresIn }
   );
 
-  res.json({ token, user: { username: user.username, displayName: user.display_name } });
+  res.json({ token, user: { username: user.username, displayName: user.display_name, role: user.role } });
 });
 
 authRouter.get('/me', requireAuth, (req, res) => {
-  res.json({ username: req.user.username, displayName: req.user.displayName });
+  res.json({ username: req.user.username, displayName: req.user.displayName, role: req.user.role });
 });
