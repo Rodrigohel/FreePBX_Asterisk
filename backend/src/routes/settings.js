@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import multer from 'multer';
 import { getSettings, setSettings } from '../services/settingsService.js';
+import { sendTelegramMessageWith } from '../services/telegramService.js';
 
 export const settingsRouter = Router();
 
@@ -71,6 +72,23 @@ settingsRouter.put('/', (req, res) => {
   if (typeof telegramChatId === 'string') updates.telegramChatId = telegramChatId.trim();
 
   res.json(setSettings(updates));
+});
+
+settingsRouter.post('/telegram/test', async (req, res) => {
+  const current = getSettings();
+  const botToken = String(req.body?.telegramBotToken ?? current.telegramBotToken ?? '').trim();
+  const chatId = String(req.body?.telegramChatId ?? current.telegramChatId ?? '').trim();
+
+  if (!botToken || !chatId) {
+    return res.status(400).json({ error: 'Preencha o Bot Token e o Chat ID antes de testar.' });
+  }
+
+  const result = await sendTelegramMessageWith(
+    botToken, chatId,
+    '🔔 Teste do painel PBX — se você recebeu esta mensagem, a notificação está configurada corretamente!',
+  );
+  if (!result.ok) return res.status(400).json({ error: result.error });
+  res.json({ ok: true });
 });
 
 settingsRouter.post('/logo', (req, res) => {

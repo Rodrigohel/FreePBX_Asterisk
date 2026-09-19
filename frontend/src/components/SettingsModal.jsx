@@ -23,6 +23,9 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [testingTelegram, setTestingTelegram] = useState(false);
+  const [telegramTestMessage, setTelegramTestMessage] = useState('');
+  const [telegramTestError, setTelegramTestError] = useState('');
   const fileInputRef = useRef(null);
 
   const [users, setUsers] = useState([]);
@@ -113,6 +116,20 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
     }
   }
 
+  async function handleTestTelegram() {
+    setTestingTelegram(true);
+    setTelegramTestError('');
+    setTelegramTestMessage('');
+    try {
+      await api.testTelegram({ telegramBotToken, telegramChatId });
+      setTelegramTestMessage('Enviado! Confira o Telegram.');
+    } catch (err) {
+      setTelegramTestError(err.message || 'Não foi possível enviar a mensagem de teste.');
+    } finally {
+      setTestingTelegram(false);
+    }
+  }
+
   async function handleDeleteUser(id) {
     setUserError('');
     try {
@@ -130,13 +147,20 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="settings-modal-card"
         style={{
-          width: '100%', maxWidth: 440, maxHeight: '85vh', overflowY: 'auto', background: colors.bgCard,
-          border: `1px solid ${colors.border}`, borderRadius: 16, boxShadow: colors.shadow, position: 'relative', margin: '20px 0',
+          width: '100%', maxWidth: 440, background: colors.bgCard,
+          border: `1px solid ${colors.border}`, borderRadius: 16, boxShadow: colors.shadow, margin: '20px 0',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
+        {/* Cabeçalho fora da área rolável (não usa position:sticky — em
+            alguns navegadores mobile, sticky dentro de um overlay
+            position:fixed pode "descolar" visualmente do conteúdo durante
+            o toque). Assim ele nunca rola, ponto final, sem depender de
+            nenhum comportamento de scroll do navegador. */}
         <div style={{
-          position: 'sticky', top: 0, zIndex: 2, background: colors.bgCard, borderRadius: '16px 16px 0 0',
+          flexShrink: 0, background: colors.bgCard, borderRadius: '16px 16px 0 0',
           borderBottom: `1px solid ${colors.border}`, padding: '20px 26px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -156,6 +180,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
           </button>
         </div>
 
+        <div style={{ overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
         <form onSubmit={handleSave} style={{ padding: '20px 26px 26px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
             <Logo colors={colors} logoUrl={logoUrl} size={56} />
@@ -204,6 +229,25 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
 
           <label style={labelStyle(colors)}>Chat ID</label>
           <input value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)} placeholder="8873836707" style={inputStyle(colors)} />
+
+          <button
+            type="button"
+            onClick={handleTestTelegram}
+            disabled={testingTelegram || !telegramBotToken || !telegramChatId}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${colors.border}`, background: colors.bgCardAlt,
+              color: colors.textPrimary, borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600,
+              cursor: testingTelegram || !telegramBotToken || !telegramChatId ? 'default' : 'pointer',
+              opacity: !telegramBotToken || !telegramChatId ? 0.5 : 1, marginBottom: 10,
+            }}
+          >
+            <span style={{ display: 'inline-flex', animation: testingTelegram ? 'spinIcon 0.7s linear infinite' : 'none' }}>
+              <Icon paths={ICONS.refresh} size={14} strokeWidth={2.2} />
+            </span>
+            {testingTelegram ? 'Enviando...' : 'Testar notificação'}
+          </button>
+          {telegramTestError && <div style={{ color: colors.red, fontSize: 12.5, marginBottom: 14 }}>{telegramTestError}</div>}
+          {telegramTestMessage && !telegramTestError && <div style={{ color: colors.green, fontSize: 12.5, marginBottom: 14 }}>{telegramTestMessage}</div>}
 
           {error && <div style={{ color: colors.red, fontSize: 13, marginBottom: 14 }}>{error}</div>}
           {message && !error && <div style={{ color: colors.green, fontSize: 13, marginBottom: 14 }}>{message}</div>}
@@ -285,6 +329,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
             {addingUser ? 'Criando...' : 'Adicionar usuário'}
           </button>
         </form>
+        </div>
         </div>
       </div>
     </div>
