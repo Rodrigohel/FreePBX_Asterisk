@@ -12,8 +12,11 @@ export const publicRouter = Router();
 const alertsService = { getActiveAlertsCount };
 
 // Nome da empresa/PBX e logo — usados no cabeçalho antes mesmo do login.
+// Só o subconjunto de marca é público; limites de alerta e credenciais do
+// Telegram (também guardados em `settings`) exigem login — ver GET /api/settings.
 publicRouter.get('/settings', (req, res) => {
-  res.json(getSettings());
+  const { companyName, pbxName, logoUrl } = getSettings();
+  res.json({ companyName, pbxName, logoUrl });
 });
 
 /**

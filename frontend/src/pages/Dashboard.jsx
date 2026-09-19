@@ -213,6 +213,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
           settings={settings}
           onClose={() => setShowSettings(false)}
           onSaved={reloadSettings}
+          currentUsername={user?.username}
         />
       )}
 

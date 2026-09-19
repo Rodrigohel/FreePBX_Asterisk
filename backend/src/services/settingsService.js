@@ -10,6 +10,10 @@ const DEFAULTS = {
   companyName: process.env.DEFAULT_COMPANY_NAME || 'Minha Empresa',
   pbxName: process.env.DEFAULT_PBX_NAME || 'PBX',
   logoUrl: '',
+  alertExtensionOfflineMinutes: String(process.env.ALERT_EXTENSION_OFFLINE_MINUTES || 120),
+  alertDiskUsagePercent: String(process.env.ALERT_DISK_USAGE_PERCENT || 80),
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  telegramChatId: process.env.TELEGRAM_CHAT_ID || '',
 };
 
 const ALLOWED_KEYS = new Set(Object.keys(DEFAULTS));

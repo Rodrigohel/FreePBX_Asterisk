@@ -5,6 +5,7 @@ import { getServerHealth } from './healthService.js';
 import { getLastSeenOnline } from './extensionState.js';
 import { mockAlerts } from './mockData.js';
 import { sendTelegramMessage } from './telegramService.js';
+import { getSettings } from './settingsService.js';
 
 const upsertStmt = db.prepare(`
   INSERT INTO alerts (id, severity, message, created_at, status, source_key)
@@ -68,10 +69,14 @@ function formatDateTime(ms) {
 export async function runAlertChecks() {
   if (config.forceMock) return;
 
+  const settings = getSettings();
+  const offlineMinutes = Number(settings.alertExtensionOfflineMinutes) || 120;
+  const diskPercent = Number(settings.alertDiskUsagePercent) || 80;
+
   try {
     const { data: extensions, source } = await getExtensions();
     if (source === 'ami') {
-      const thresholdMs = config.alerts.extensionOfflineMinutes * 60 * 1000;
+      const thresholdMs = offlineMinutes * 60 * 1000;
       for (const ext of extensions) {
         const sourceKey = `ext-offline-${ext.number}`;
         if (ext.state === 'offline') {
@@ -80,7 +85,7 @@ export async function runAlertChecks() {
           if (offlineFor >= thresholdMs) {
             const message = lastSeen
               ? `Ramal ${ext.number} (${ext.name}) offline desde ${formatDateTime(lastSeen)} — ${formatDuration(offlineFor)} sem conexão`
-              : `Ramal ${ext.number} (${ext.name}) offline há mais de ${config.alerts.extensionOfflineMinutes} minutos (sem registro de última conexão)`;
+              : `Ramal ${ext.number} (${ext.name}) offline há mais de ${offlineMinutes} minutos (sem registro de última conexão)`;
             upsertAlert({ id: sourceKey, severity: 'critical', message, status: 'active', source_key: sourceKey });
           }
         } else {
@@ -96,11 +101,11 @@ export async function runAlertChecks() {
     const health = await getServerHealth();
     if (health.source === 'system') {
       const sourceKey = 'disk-usage-high';
-      if (health.diskPercent >= config.alerts.diskUsagePercent) {
+      if (health.diskPercent >= diskPercent) {
         upsertAlert({
           id: sourceKey,
           severity: 'warning',
-          message: `Uso de disco acima de ${config.alerts.diskUsagePercent}% (atual: ${health.diskPercent}%)`,
+          message: `Uso de disco acima de ${diskPercent}% (atual: ${health.diskPercent}%)`,
           status: 'active',
           source_key: sourceKey,
         });
