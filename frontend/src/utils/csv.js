@@ -13,6 +13,23 @@ export function toCsv(headers, rows) {
   return '﻿' + lines.join('\r\n');
 }
 
+// Como toCsv, mas pra exportar várias tabelinhas relacionadas (ex.: dois
+// rankings, ou as seções do relatório mensal) num único arquivo CSV, cada
+// uma com seu próprio título e cabeçalho, separadas por uma linha em branco
+// — assim o usuário abre um arquivo só no Excel em vez de vários soltos.
+export function toMultiSectionCsv(sections) {
+  const blocks = sections.map((section) => {
+    const lines = [escapeCsvValue(section.heading), section.headers.map(escapeCsvValue).join(',')];
+    if (section.rows.length === 0) {
+      lines.push(escapeCsvValue(section.emptyLabel || 'Nada a mostrar.'));
+    } else {
+      for (const row of section.rows) lines.push(row.map(escapeCsvValue).join(','));
+    }
+    return lines.join('\r\n');
+  });
+  return '﻿' + blocks.join('\r\n\r\n');
+}
+
 export function downloadCsv(filename, csvContent) {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
