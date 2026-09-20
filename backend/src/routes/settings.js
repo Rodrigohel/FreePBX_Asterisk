@@ -37,7 +37,7 @@ settingsRouter.get('/', (req, res) => {
 settingsRouter.put('/', (req, res) => {
   const {
     companyName, pbxName, alertExtensionOfflineMinutes, alertDiskUsagePercent, alertReminderIntervalMinutes,
-    telegramBotToken, telegramChatId,
+    porteiroExtensions, telegramBotToken, telegramChatId,
   } = req.body || {};
   const updates = {};
 
@@ -66,6 +66,14 @@ settingsRouter.put('/', (req, res) => {
       return res.status(400).json({ error: 'Intervalo de lembrete deve ser um número de minutos (0 desativa).' });
     }
     updates.alertReminderIntervalMinutes = n;
+  }
+
+  if (typeof porteiroExtensions === 'string') {
+    const numbers = porteiroExtensions.split(',').map((n) => n.trim()).filter(Boolean);
+    if (numbers.some((n) => !/^\d+$/.test(n))) {
+      return res.status(400).json({ error: 'Ramais da portaria devem ser números separados por vírgula (ex.: 993,994,995).' });
+    }
+    updates.porteiroExtensions = numbers.join(',');
   }
 
   if (typeof telegramBotToken === 'string') updates.telegramBotToken = telegramBotToken.trim();
