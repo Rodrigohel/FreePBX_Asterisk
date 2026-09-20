@@ -2,7 +2,7 @@ import { amiClient } from '../ami/amiClient.js';
 import { getCdrPool } from './cdrClient.js';
 import { config } from '../config.js';
 import { getSettings } from './settingsService.js';
-import { mockActiveCalls, mockCallsSummary, mockTodaySummary } from './mockData.js';
+import { mockActiveCalls, mockCallsSummary, mockTodaySummary, mockTopUnitsReport, mockCallHeatmap } from './mockData.js';
 
 function stateFromChannelState(channelStateDesc) {
   const s = (channelStateDesc || '').toLowerCase();
@@ -353,4 +353,94 @@ export async function getDaySummary(date) {
 
 export async function getTodaySummary() {
   return getDaySummary(new Date().toISOString().slice(0, 10));
+}
+
+// Ranking das unidades que mais ligaram pra portaria (do ponto de vista da
+// portaria: chamadas 'received') e das que mais deixaram de atender quando
+// a portaria ligou (chamadas com disposition NO ANSWER tendo a unidade como
+// destino, excluindo a própria portaria) — útil pro síndico identificar
+// unidades com uso atípico ou que raramente atendem o interfone.
+export async function getTopUnitsReport({ from, to, limit = 10 } = {}) {
+  const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const toDate = to || new Date().toISOString().slice(0, 10);
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 10));
+
+  if (config.forceMock) {
+    return { ...mockTopUnitsReport(), from: fromDate, to: toDate, source: 'mock' };
+  }
+
+  try {
+    const pool = await getCdrPool();
+    const porteiroNumbers = getPorteiroNumbers();
+    const { sql: directionSql, params: directionParams } = directionCaseSql(porteiroNumbers);
+
+    const [mostActiveRows] = await pool.query(
+      `SELECT src AS number, COUNT(*) AS total
+       FROM (
+         SELECT *, ${directionSql} AS direction FROM cdr
+         WHERE calldate >= ? AND calldate < DATE_ADD(?, INTERVAL 1 DAY)
+       ) t
+       WHERE direction = 'received'
+       GROUP BY src
+       ORDER BY total DESC
+       LIMIT ?`,
+      [...directionParams, fromDate, toDate, safeLimit]
+    );
+
+    const porteiroPlaceholders = porteiroNumbers.length ? porteiroNumbers.map(() => '?').join(',') : null;
+    const excludePorteiro = porteiroPlaceholders ? `AND dst NOT IN (${porteiroPlaceholders})` : '';
+    const [mostMissedRows] = await pool.query(
+      `SELECT dst AS number, COUNT(*) AS total
+       FROM cdr
+       WHERE calldate >= ? AND calldate < DATE_ADD(?, INTERVAL 1 DAY) AND disposition = 'NO ANSWER' ${excludePorteiro}
+       GROUP BY dst
+       ORDER BY total DESC
+       LIMIT ?`,
+      [fromDate, toDate, ...porteiroNumbers, safeLimit]
+    );
+
+    return {
+      from: fromDate, to: toDate,
+      mostActive: mostActiveRows.map((r) => ({ number: r.number, total: Number(r.total) })),
+      mostMissed: mostMissedRows.map((r) => ({ number: r.number, total: Number(r.total) })),
+      source: 'cdr',
+    };
+  } catch (err) {
+    return { ...mockTopUnitsReport(), from: fromDate, to: toDate, source: 'mock', error: err.message };
+  }
+}
+
+// Volume de chamadas por dia da semana x hora, num período — mostra os
+// horários de pico do interfone pra ajudar a planejar escala da portaria.
+export async function getCallHeatmap({ from, to } = {}) {
+  const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const toDate = to || new Date().toISOString().slice(0, 10);
+
+  if (config.forceMock) {
+    return { ...mockCallHeatmap(), from: fromDate, to: toDate, source: 'mock' };
+  }
+
+  try {
+    const pool = await getCdrPool();
+    // DAYOFWEEK do MySQL: 1=domingo..7=sábado — normaliza pra 0=domingo..6=sábado
+    const [rows] = await pool.query(
+      `SELECT (DAYOFWEEK(calldate) - 1) AS dow, HOUR(calldate) AS hour, COUNT(*) AS total
+       FROM cdr
+       WHERE calldate >= ? AND calldate < DATE_ADD(?, INTERVAL 1 DAY)
+       GROUP BY dow, hour`,
+      [fromDate, toDate]
+    );
+
+    const totals = new Map(rows.map((r) => [`${r.dow}-${r.hour}`, Number(r.total)]));
+    const cells = [];
+    for (let dow = 0; dow < 7; dow++) {
+      for (let hour = 0; hour < 24; hour++) {
+        cells.push({ dow, hour, total: totals.get(`${dow}-${hour}`) || 0 });
+      }
+    }
+
+    return { cells, from: fromDate, to: toDate, source: 'cdr' };
+  } catch (err) {
+    return { ...mockCallHeatmap(), from: fromDate, to: toDate, source: 'mock', error: err.message };
+  }
 }
