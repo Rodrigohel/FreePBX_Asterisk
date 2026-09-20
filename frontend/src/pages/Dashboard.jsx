@@ -17,6 +17,8 @@ import ExtensionDetailModal from '../components/ExtensionDetailModal.jsx';
 import CallHistoryPanel from '../components/CallHistoryPanel.jsx';
 import MissedCallsPanel from '../components/MissedCallsPanel.jsx';
 import FailuresReportPanel from '../components/FailuresReportPanel.jsx';
+import TopUnitsPanel from '../components/TopUnitsPanel.jsx';
+import CallHeatmapPanel from '../components/CallHeatmapPanel.jsx';
 import LoadingScreen from '../components/LoadingScreen.jsx';
 
 const THEME_KEY = 'pbx_dashboard_theme';
@@ -74,6 +76,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   const alertsSectionRef = useRef(null);
   const healthSectionRef = useRef(null);
   const todaySummarySectionRef = useRef(null);
+  const analyticsSectionRef = useRef(null);
   const callHistorySectionRef = useRef(null);
 
   const colors = getColors(theme);
@@ -189,6 +192,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
     { key: 'alerts', label: 'Alertas', icon: ICONS.warningTriangle, onClick: () => scrollToSection(alertsSectionRef) },
     { key: 'health', label: 'Servidor', icon: ICONS.server, onClick: () => scrollToSection(healthSectionRef) },
     { key: 'summary', label: 'Resumo do dia', icon: ICONS.calendar, onClick: () => scrollToSection(todaySummarySectionRef) },
+    { key: 'analytics', label: 'Análises', icon: ICONS.extensionsIcon, onClick: () => scrollToSection(analyticsSectionRef) },
     { key: 'history', label: 'Histórico', icon: ICONS.clock, onClick: () => scrollToSection(callHistorySectionRef) },
   ];
 
@@ -310,11 +314,16 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
           <MissedCallsPanel colors={colors} extensions={extensions} />
         </div>
 
-        <div style={reveal(6)}>
+        <div ref={analyticsSectionRef} style={{ ...reveal(6), display: 'flex', flexDirection: 'column', gap: 16, scrollMarginTop: 20 }}>
+          <TopUnitsPanel colors={colors} extensions={extensions} />
+          <CallHeatmapPanel colors={colors} />
+        </div>
+
+        <div style={reveal(7)}>
           <FailuresReportPanel colors={colors} extensions={extensions} />
         </div>
 
-        <div ref={callHistorySectionRef} style={{ ...reveal(7), scrollMarginTop: 20 }}>
+        <div ref={callHistorySectionRef} style={{ ...reveal(8), scrollMarginTop: 20 }}>
           <CallHistoryPanel colors={colors} extensions={extensions} />
         </div>
 

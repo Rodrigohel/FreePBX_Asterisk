@@ -64,6 +64,44 @@ export function mockTodaySummary() {
   };
 }
 
+export function mockTopUnitsReport() {
+  return {
+    mostActive: [
+      { number: '1802', total: 34 },
+      { number: '1204', total: 29 },
+      { number: '1502', total: 22 },
+      { number: '1701', total: 19 },
+      { number: '1305', total: 15 },
+    ],
+    mostMissed: [
+      { number: '1901', total: 6 },
+      { number: '1105', total: 4 },
+      { number: '1604', total: 3 },
+      { number: '1802', total: 2 },
+      { number: '1002', total: 1 },
+    ],
+  };
+}
+
+// Matriz dia-da-semana (0=domingo) x hora (0-23) com um padrão plausível de
+// picos no fim de tarde/começo da noite, mais movimento em dias úteis.
+export function mockCallHeatmap() {
+  const cells = [];
+  for (let dow = 0; dow < 7; dow++) {
+    const weekday = dow >= 1 && dow <= 5;
+    for (let hour = 0; hour < 24; hour++) {
+      let base = 0;
+      if (hour >= 7 && hour <= 22) {
+        const eveningPeak = Math.exp(-((hour - 18) ** 2) / 12);
+        const morningPeak = Math.exp(-((hour - 9) ** 2) / 10);
+        base = (eveningPeak * 14 + morningPeak * 8) * (weekday ? 1 : 0.6);
+      }
+      cells.push({ dow, hour, total: Math.round(base) });
+    }
+  }
+  return { cells };
+}
+
 export function mockAlerts() {
   const now = Date.now();
   return [
