@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { getStatus } from '../services/statusService.js';
 import { getExtensions, getExtensionsSummary, getExtensionDetail } from '../services/extensionsService.js';
 import { getDowntimeReport } from '../services/extensionState.js';
-import { getActiveCalls, getCallsSummary, getTodaySummary, getDaySummary, getExtensionCallsToday, searchCallHistory, exportCallHistory, getMissedCallsToday, getTopUnitsReport, getCallHeatmap } from '../services/callsService.js';
+import { getActiveCalls, getCallsSummary, getTodaySummary, getDaySummary, getPeriodSummary, getExtensionCallsToday, searchCallHistory, exportCallHistory, getMissedCallsToday, getTopUnitsReport, getCallHeatmap } from '../services/callsService.js';
 import { getAlerts, getActiveAlertsCount } from '../services/alertsService.js';
 import { getServerHealth } from '../services/healthService.js';
 import { getFavoriteNumbers, addFavorite, removeFavorite } from '../services/favoritesService.js';
@@ -73,6 +73,11 @@ dashboardRouter.get('/calls/history/export', async (req, res) => {
 
 dashboardRouter.get('/calls/missed-today', async (req, res) => {
   res.json(await getMissedCallsToday());
+});
+
+dashboardRouter.get('/calls/period-summary', async (req, res) => {
+  const { from, to } = req.query;
+  res.json(await getPeriodSummary({ from, to }));
 });
 
 dashboardRouter.get('/calls/top-units', async (req, res) => {

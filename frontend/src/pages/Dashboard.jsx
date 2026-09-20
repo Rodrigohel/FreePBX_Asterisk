@@ -19,6 +19,7 @@ import MissedCallsPanel from '../components/MissedCallsPanel.jsx';
 import FailuresReportPanel from '../components/FailuresReportPanel.jsx';
 import TopUnitsPanel from '../components/TopUnitsPanel.jsx';
 import CallHeatmapPanel from '../components/CallHeatmapPanel.jsx';
+import MonthlyReportPanel from '../components/MonthlyReportPanel.jsx';
 import LoadingScreen from '../components/LoadingScreen.jsx';
 
 const THEME_KEY = 'pbx_dashboard_theme';
@@ -322,6 +323,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
         <div ref={analyticsSectionRef} style={{ ...reveal(6), display: 'flex', flexDirection: 'column', gap: 16, scrollMarginTop: 20 }}>
           <TopUnitsPanel colors={colors} extensions={extensions} />
           <CallHeatmapPanel colors={colors} />
+          <MonthlyReportPanel colors={colors} settings={settings} extensions={extensions} />
         </div>
 
         <div style={reveal(7)}>
