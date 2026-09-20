@@ -39,6 +39,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
   const [offlineMinutes, setOfflineMinutes] = useState('120');
   const [diskPercent, setDiskPercent] = useState('80');
   const [reminderMinutes, setReminderMinutes] = useState('60');
+  const [slaThresholdMinutes, setSlaThresholdMinutes] = useState('0');
   const [porteiroExtensions, setPorteiroExtensions] = useState('');
   const [telegramBotToken, setTelegramBotToken] = useState('');
   const [telegramChatId, setTelegramChatId] = useState('');
@@ -67,6 +68,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
       setOfflineMinutes(String(full.alertExtensionOfflineMinutes ?? '120'));
       setDiskPercent(String(full.alertDiskUsagePercent ?? '80'));
       setReminderMinutes(String(full.alertReminderIntervalMinutes ?? '60'));
+      setSlaThresholdMinutes(String(full.slaThresholdMinutesPerMonth ?? '0'));
       setPorteiroExtensions(full.porteiroExtensions || '');
       setTelegramBotToken(full.telegramBotToken || '');
       setTelegramChatId(full.telegramChatId || '');
@@ -90,6 +92,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
         alertExtensionOfflineMinutes: offlineMinutes,
         alertDiskUsagePercent: diskPercent,
         alertReminderIntervalMinutes: reminderMinutes,
+        slaThresholdMinutesPerMonth: slaThresholdMinutes,
         porteiroExtensions,
         telegramBotToken, telegramChatId,
       });
@@ -258,6 +261,12 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
 
           <label style={labelStyle(colors)}>Alerta de disco cheio acima de (%)</label>
           <input type="number" min="1" max="100" value={diskPercent} onChange={(e) => setDiskPercent(e.target.value)} style={inputStyle(colors)} />
+
+          <label style={labelStyle(colors)}>Alertar se um ramal somar mais de (minutos offline no mês, 0 = desativado)</label>
+          <input type="number" min="0" value={slaThresholdMinutes} onChange={(e) => setSlaThresholdMinutes(e.target.value)} style={inputStyle(colors)} />
+          <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: -10, marginBottom: 14 }}>
+            Pega ramal instável (cai e volta várias vezes) que nunca fica offline tempo suficiente pra disparar o alerta acima, mas que no total do mês já passou do aceitável.
+          </div>
 
           <div style={sectionTitleStyle(colors)}>Notificação por Telegram (opcional)</div>
           <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: -4, marginBottom: 12 }}>

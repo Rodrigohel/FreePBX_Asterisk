@@ -2,7 +2,7 @@ import { db } from '../db/sqlite.js';
 import { config } from '../config.js';
 import { getExtensions } from './extensionsService.js';
 import { getServerHealth } from './healthService.js';
-import { getLastSeenOnline } from './extensionState.js';
+import { getLastSeenOnline, getDowntimeReport } from './extensionState.js';
 import { mockAlerts } from './mockData.js';
 import { sendTelegramMessage } from './telegramService.js';
 import { getSettings } from './settingsService.js';
@@ -123,6 +123,7 @@ export async function runAlertChecks() {
   const diskPercent = Number(settings.alertDiskUsagePercent) || 80;
   const reminderMinutes = Number(settings.alertReminderIntervalMinutes) || 0;
   const reminderIntervalMs = reminderMinutes > 0 ? reminderMinutes * 60 * 1000 : 0;
+  const slaThresholdMinutes = Number(settings.slaThresholdMinutesPerMonth) || 0;
 
   try {
     const { data: extensions, source } = await getExtensions();
@@ -141,6 +142,33 @@ export async function runAlertChecks() {
           }
         } else {
           resolveAlert(sourceKey);
+        }
+      }
+
+      // SLA: downtime acumulado no mês corrente, por ramal — diferente do
+      // alerta acima (que é "está offline agora"), este pega o ramal que
+      // fica instável (cai e volta várias vezes, nunca ficando offline
+      // tempo suficiente pra disparar o outro alerta) mas que no total do
+      // mês já passou do tolerável. Como o total só cresce dentro do mesmo
+      // mês, "resolvido" só acontece de fato na virada do mês.
+      if (slaThresholdMinutes > 0) {
+        const now = new Date();
+        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        const today = now.toISOString().slice(0, 10);
+        const incidents = getDowntimeReport({ from: monthStart, to: today });
+        const totalSecondsByNumber = new Map();
+        for (const inc of incidents) {
+          totalSecondsByNumber.set(inc.number, (totalSecondsByNumber.get(inc.number) || 0) + inc.durationSeconds);
+        }
+        for (const ext of extensions) {
+          const sourceKey = `sla-${ext.number}`;
+          const totalMinutes = Math.round((totalSecondsByNumber.get(ext.number) || 0) / 60);
+          if (totalMinutes >= slaThresholdMinutes) {
+            const message = `Ramal ${ext.number} (${ext.name}) já ficou offline ${formatDuration(totalMinutes * 60000)} este mês (limite: ${formatDuration(slaThresholdMinutes * 60000)})`;
+            upsertAlert({ id: sourceKey, severity: 'warning', message, status: 'active', source_key: sourceKey }, reminderIntervalMs);
+          } else {
+            resolveAlert(sourceKey);
+          }
         }
       }
     }

@@ -13,6 +13,9 @@ const DEFAULTS = {
   alertExtensionOfflineMinutes: String(process.env.ALERT_EXTENSION_OFFLINE_MINUTES || 120),
   alertDiskUsagePercent: String(process.env.ALERT_DISK_USAGE_PERCENT || 80),
   alertReminderIntervalMinutes: String(process.env.ALERT_REMINDER_INTERVAL_MINUTES || 60),
+  // Downtime acumulado (minutos) que um ramal pode somar no mês corrente
+  // antes de virar um alerta de SLA. 0 desativa esse tipo de alerta.
+  slaThresholdMinutesPerMonth: String(process.env.SLA_THRESHOLD_MINUTES_PER_MONTH || 0),
   // Ramais da portaria/interfone — usados pra classificar chamadas como
   // "recebida" (chegou pra portaria) ou "realizada" (saiu da portaria) do
   // ponto de vista de quem atende o interfone, em vez de "interno vs.
