@@ -32,7 +32,260 @@ function formatAuditDate(iso) {
   });
 }
 
+const TABS = [
+  { key: 'general', label: 'Geral' },
+  { key: 'alerts', label: 'Alertas' },
+  { key: 'notifications', label: 'Notificações' },
+  { key: 'users', label: 'Usuários' },
+  { key: 'audit', label: 'Auditoria' },
+];
+
+function TabButton({ colors, active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        border: 'none', borderBottom: active ? `2px solid ${colors.primary}` : '2px solid transparent',
+        background: 'transparent', color: active ? colors.primary : colors.textSecondary,
+        padding: '8px 4px', marginRight: 18, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function GeneralTab({
+  colors, companyName, setCompanyName, pbxName, setPbxName, logoUrl, uploading, fileInputRef, handleFileChange,
+  porteiroExtensions, setPorteiroExtensions,
+}) {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+        <Logo colors={colors} logoUrl={logoUrl} size={56} />
+        <div>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            style={{ border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: uploading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Icon paths={ICONS.upload} size={14} />
+            {uploading ? 'Enviando...' : 'Trocar logo'}
+          </button>
+          <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 6 }}>PNG, JPG ou SVG, até 2MB</div>
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+        </div>
+      </div>
+
+      <label style={labelStyle(colors)}>Nome (empresa / condomínio)</label>
+      <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle(colors)} />
+
+      <label style={labelStyle(colors)}>Nome do sistema / PBX</label>
+      <input value={pbxName} onChange={(e) => setPbxName(e.target.value)} style={inputStyle(colors)} />
+
+      <div style={sectionTitleStyle(colors)}>Chamadas</div>
+
+      <label style={labelStyle(colors)}>Ramais da portaria (separados por vírgula)</label>
+      <input
+        value={porteiroExtensions}
+        onChange={(e) => setPorteiroExtensions(e.target.value)}
+        placeholder="993,994,995,996,998"
+        style={inputStyle(colors)}
+      />
+      <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: -10, marginBottom: 14 }}>
+        Usado pra decidir "Recebida" (chegou pra portaria) e "Realizada" (saiu da portaria) no resumo e no histórico de chamadas. Deixe em branco pra usar o critério antigo (interno vs. linha externa).
+      </div>
+    </>
+  );
+}
+
+function AlertsTab({
+  colors, offlineMinutes, setOfflineMinutes, reminderMinutes, setReminderMinutes,
+  diskPercent, setDiskPercent, slaThresholdMinutes, setSlaThresholdMinutes,
+}) {
+  return (
+    <>
+      <label style={labelStyle(colors)}>Ramal considerado offline após (minutos)</label>
+      <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(e.target.value)} style={inputStyle(colors)} />
+
+      <label style={labelStyle(colors)}>Repetir lembrete a cada (minutos, 0 = não repetir)</label>
+      <input type="number" min="0" value={reminderMinutes} onChange={(e) => setReminderMinutes(e.target.value)} style={inputStyle(colors)} />
+      <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: -10, marginBottom: 14 }}>
+        Enquanto o ramal continuar offline, manda um novo aviso no Telegram nesse intervalo.
+      </div>
+
+      <label style={labelStyle(colors)}>Alerta de disco cheio acima de (%)</label>
+      <input type="number" min="1" max="100" value={diskPercent} onChange={(e) => setDiskPercent(e.target.value)} style={inputStyle(colors)} />
+
+      <label style={labelStyle(colors)}>Alertar se um ramal somar mais de (minutos offline no mês, 0 = desativado)</label>
+      <input type="number" min="0" value={slaThresholdMinutes} onChange={(e) => setSlaThresholdMinutes(e.target.value)} style={inputStyle(colors)} />
+      <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: -10, marginBottom: 14 }}>
+        Pega ramal instável (cai e volta várias vezes) que nunca fica offline tempo suficiente pra disparar o alerta acima, mas que no total do mês já passou do aceitável.
+      </div>
+    </>
+  );
+}
+
+function NotificationsTab({
+  colors, telegramBotToken, setTelegramBotToken, telegramChatId, setTelegramChatId,
+  handleTestTelegram, testingTelegram, telegramTestError, telegramTestMessage,
+  dailyDigestEnabled, setDailyDigestEnabled, dailyDigestHour, setDailyDigestHour,
+}) {
+  return (
+    <>
+      <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: -4, marginBottom: 12 }}>
+        Deixe em branco para não notificar. Fale com o @BotFather no Telegram para criar um bot.
+      </div>
+
+      <label style={labelStyle(colors)}>Bot Token</label>
+      <input value={telegramBotToken} onChange={(e) => setTelegramBotToken(e.target.value)} placeholder="123456789:AA..." style={inputStyle(colors)} />
+
+      <label style={labelStyle(colors)}>Chat ID</label>
+      <input value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)} placeholder="8873836707" style={inputStyle(colors)} />
+
+      <button
+        type="button"
+        onClick={handleTestTelegram}
+        disabled={testingTelegram || !telegramBotToken || !telegramChatId}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${colors.border}`, background: colors.bgCardAlt,
+          color: colors.textPrimary, borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600,
+          cursor: testingTelegram || !telegramBotToken || !telegramChatId ? 'default' : 'pointer',
+          opacity: !telegramBotToken || !telegramChatId ? 0.5 : 1, marginBottom: 10,
+        }}
+      >
+        <span style={{ display: 'inline-flex', animation: testingTelegram ? 'spinIcon 0.7s linear infinite' : 'none' }}>
+          <Icon paths={ICONS.refresh} size={14} strokeWidth={2.2} />
+        </span>
+        {testingTelegram ? 'Enviando...' : 'Testar notificação'}
+      </button>
+      {telegramTestError && <div style={{ color: colors.red, fontSize: 12.5, marginBottom: 14 }}>{telegramTestError}</div>}
+      {telegramTestMessage && !telegramTestError && <div style={{ color: colors.green, fontSize: 12.5, marginBottom: 14 }}>{telegramTestMessage}</div>}
+
+      <div style={sectionTitleStyle(colors)}>Resumo diário automático</div>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.textPrimary, marginBottom: 10, cursor: 'pointer' }}>
+        <input type="checkbox" checked={dailyDigestEnabled} onChange={(e) => setDailyDigestEnabled(e.target.checked)} />
+        Mandar resumo diário automático (dia anterior) no Telegram
+      </label>
+      {dailyDigestEnabled && (
+        <>
+          <label style={labelStyle(colors)}>Horário do resumo (0-23h)</label>
+          <input type="number" min="0" max="23" value={dailyDigestHour} onChange={(e) => setDailyDigestHour(e.target.value)} style={inputStyle(colors)} />
+        </>
+      )}
+    </>
+  );
+}
+
+function UsersTab({
+  colors, users, currentUsername, handleDeleteUser, handleAddUser,
+  newUsername, setNewUsername, newDisplayName, setNewDisplayName, newPassword, setNewPassword,
+  newIsAdmin, setNewIsAdmin, userError, addingUser,
+}) {
+  return (
+    <>
+      <div style={sectionTitleStyle(colors)}>Usuários do painel</div>
+
+      {users.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          {users.map((u) => (
+            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
+              <span style={{ fontWeight: 600, color: colors.textPrimary }}>{u.displayName}</span>
+              <span style={{ color: colors.textTertiary, fontSize: 12 }}>@{u.username}</span>
+              <span style={{
+                fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, padding: '2px 7px', borderRadius: 99,
+                color: u.role === 'admin' ? colors.primary : colors.textTertiary,
+                background: u.role === 'admin' ? colors.primarySoft : colors.graySoft,
+              }}>
+                {u.role === 'admin' ? 'Admin' : 'Usuário'}
+              </span>
+              {u.username !== currentUsername && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteUser(u.id)}
+                  style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Remover
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={sectionTitleStyle(colors)}>Adicionar usuário</div>
+      <form onSubmit={handleAddUser}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          <input
+            value={newUsername}
+            onChange={(e) => setNewUsername(e.target.value)}
+            placeholder="Usuário (login)"
+            required
+            style={{ ...inputStyle(colors), flex: '1 1 120px', marginBottom: 0 }}
+          />
+          <input
+            value={newDisplayName}
+            onChange={(e) => setNewDisplayName(e.target.value)}
+            placeholder="Nome de exibição"
+            style={{ ...inputStyle(colors), flex: '1 1 120px', marginBottom: 0 }}
+          />
+        </div>
+        <input
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          placeholder="Senha (mín. 6 caracteres)"
+          required
+          minLength={6}
+          style={inputStyle(colors)}
+        />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.textPrimary, marginBottom: 10, cursor: 'pointer' }}>
+          <input type="checkbox" checked={newIsAdmin} onChange={(e) => setNewIsAdmin(e.target.checked)} />
+          Administrador (pode editar Configurações e usuários)
+        </label>
+        {userError && <div style={{ color: colors.red, fontSize: 13, marginBottom: 10 }}>{userError}</div>}
+        <button
+          type="submit"
+          disabled={addingUser}
+          style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, fontWeight: 700, fontSize: 13, cursor: addingUser ? 'default' : 'pointer' }}
+        >
+          {addingUser ? 'Criando...' : 'Adicionar usuário'}
+        </button>
+      </form>
+    </>
+  );
+}
+
+function AuditTab({ colors, auditLog }) {
+  return (
+    <>
+      <div style={sectionTitleStyle(colors)}>Log de auditoria</div>
+      {auditLog.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: colors.textTertiary }}>Nenhuma ação registrada ainda.</div>
+      ) : (
+        <div>
+          {auditLog.map((entry) => (
+            <div key={entry.id} style={{ padding: '7px 0', borderBottom: `1px solid ${colors.border}`, fontSize: 12.5 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ color: colors.textPrimary }}>
+                  <strong>@{entry.actorUsername}</strong> {auditActionLabel(entry.action)}
+                </span>
+                <span style={{ color: colors.textTertiary, flexShrink: 0 }}>{formatAuditDate(entry.at)}</span>
+              </div>
+              {entry.details && <div style={{ color: colors.textTertiary, fontSize: 11.5, marginTop: 2 }}>{entry.details}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function SettingsModal({ colors, settings, onClose, onSaved, currentUsername }) {
+  const [tab, setTab] = useState('general');
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [pbxName, setPbxName] = useState(settings.pbxName);
   const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
@@ -85,8 +338,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
     api.users().then((res) => setUsers(res.data)).catch(() => {});
   }
 
-  async function handleSave(e) {
-    e.preventDefault();
+  async function handleSave() {
     setSaving(true);
     setError('');
     setMessage('');
@@ -175,6 +427,8 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
     }
   }
 
+  const showSaveBar = tab === 'general' || tab === 'alerts' || tab === 'notifications';
+
   return (
     <div
       onClick={onClose}
@@ -184,7 +438,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
         onClick={(e) => e.stopPropagation()}
         className="settings-modal-card"
         style={{
-          width: '100%', maxWidth: 440, background: colors.bgCard,
+          width: '100%', maxWidth: 480, background: colors.bgCard,
           border: `1px solid ${colors.border}`, borderRadius: 16, boxShadow: colors.shadow, margin: '20px 0',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
@@ -196,224 +450,89 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
             nenhum comportamento de scroll do navegador. */}
         <div style={{
           flexShrink: 0, background: colors.bgCard, borderRadius: '16px 16px 0 0',
-          borderBottom: `1px solid ${colors.border}`, padding: '20px 26px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          borderBottom: `1px solid ${colors.border}`, padding: '20px 26px 0', display: 'flex', flexDirection: 'column', gap: 14,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <Icon paths={ICONS.settings} size={20} color={colors.primary} />
-            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, color: colors.textPrimary }}>Configurações</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <Icon paths={ICONS.settings} size={20} color={colors.primary} />
+              <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, color: colors.textPrimary }}>Configurações</div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Fechar"
+              style={{
+                width: 32, height: 32, borderRadius: 9, border: `1px solid ${colors.border}`, background: colors.bgCardAlt,
+                color: colors.textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              <Icon paths={ICONS.close} size={15} strokeWidth={2.2} />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar"
-            style={{
-              width: 32, height: 32, borderRadius: 9, border: `1px solid ${colors.border}`, background: colors.bgCardAlt,
-              color: colors.textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
-            }}
-          >
-            <Icon paths={ICONS.close} size={15} strokeWidth={2.2} />
-          </button>
+
+          <div style={{ display: 'flex', overflowX: 'auto' }}>
+            {TABS.map((t) => (
+              <TabButton key={t.key} colors={colors} active={tab === t.key} onClick={() => setTab(t.key)}>
+                {t.label}
+              </TabButton>
+            ))}
+          </div>
         </div>
 
         <div style={{ overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
-        <form onSubmit={handleSave} style={{ padding: '20px 26px 26px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-            <Logo colors={colors} logoUrl={logoUrl} size={56} />
-            <div>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                style={{ border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: uploading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <Icon paths={ICONS.upload} size={14} />
-                {uploading ? 'Enviando...' : 'Trocar logo'}
-              </button>
-              <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 6 }}>PNG, JPG ou SVG, até 2MB</div>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
-            </div>
+          <div style={{ padding: '20px 26px 26px' }}>
+            {tab === 'general' && (
+              <GeneralTab
+                colors={colors} companyName={companyName} setCompanyName={setCompanyName}
+                pbxName={pbxName} setPbxName={setPbxName} logoUrl={logoUrl} uploading={uploading}
+                fileInputRef={fileInputRef} handleFileChange={handleFileChange}
+                porteiroExtensions={porteiroExtensions} setPorteiroExtensions={setPorteiroExtensions}
+              />
+            )}
+            {tab === 'alerts' && (
+              <AlertsTab
+                colors={colors} offlineMinutes={offlineMinutes} setOfflineMinutes={setOfflineMinutes}
+                reminderMinutes={reminderMinutes} setReminderMinutes={setReminderMinutes}
+                diskPercent={diskPercent} setDiskPercent={setDiskPercent}
+                slaThresholdMinutes={slaThresholdMinutes} setSlaThresholdMinutes={setSlaThresholdMinutes}
+              />
+            )}
+            {tab === 'notifications' && (
+              <NotificationsTab
+                colors={colors} telegramBotToken={telegramBotToken} setTelegramBotToken={setTelegramBotToken}
+                telegramChatId={telegramChatId} setTelegramChatId={setTelegramChatId}
+                handleTestTelegram={handleTestTelegram} testingTelegram={testingTelegram}
+                telegramTestError={telegramTestError} telegramTestMessage={telegramTestMessage}
+                dailyDigestEnabled={dailyDigestEnabled} setDailyDigestEnabled={setDailyDigestEnabled}
+                dailyDigestHour={dailyDigestHour} setDailyDigestHour={setDailyDigestHour}
+              />
+            )}
+            {tab === 'users' && (
+              <UsersTab
+                colors={colors} users={users} currentUsername={currentUsername} handleDeleteUser={handleDeleteUser}
+                handleAddUser={handleAddUser} newUsername={newUsername} setNewUsername={setNewUsername}
+                newDisplayName={newDisplayName} setNewDisplayName={setNewDisplayName}
+                newPassword={newPassword} setNewPassword={setNewPassword}
+                newIsAdmin={newIsAdmin} setNewIsAdmin={setNewIsAdmin} userError={userError} addingUser={addingUser}
+              />
+            )}
+            {tab === 'audit' && <AuditTab colors={colors} auditLog={auditLog} />}
+
+            {showSaveBar && (
+              <>
+                {error && <div style={{ color: colors.red, fontSize: 13, margin: '14px 0 0' }}>{error}</div>}
+                {message && !error && <div style={{ color: colors.green, fontSize: 13, margin: '14px 0 0' }}>{message}</div>}
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{ width: '100%', marginTop: 14, padding: '11px 12px', borderRadius: 10, border: 'none', background: colors.primary, color: '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
+                >
+                  {saving ? 'Salvando...' : 'Salvar'}
+                </button>
+              </>
+            )}
           </div>
-
-          <label style={labelStyle(colors)}>Nome (empresa / condomínio)</label>
-          <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle(colors)} />
-
-          <label style={labelStyle(colors)}>Nome do sistema / PBX</label>
-          <input value={pbxName} onChange={(e) => setPbxName(e.target.value)} style={inputStyle(colors)} />
-
-          <div style={sectionTitleStyle(colors)}>Chamadas</div>
-
-          <label style={labelStyle(colors)}>Ramais da portaria (separados por vírgula)</label>
-          <input
-            value={porteiroExtensions}
-            onChange={(e) => setPorteiroExtensions(e.target.value)}
-            placeholder="993,994,995,996,998"
-            style={inputStyle(colors)}
-          />
-          <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: -10, marginBottom: 14 }}>
-            Usado pra decidir "Recebida" (chegou pra portaria) e "Realizada" (saiu da portaria) no resumo e no histórico de chamadas. Deixe em branco pra usar o critério antigo (interno vs. linha externa).
-          </div>
-
-          <div style={sectionTitleStyle(colors)}>Alertas</div>
-
-          <label style={labelStyle(colors)}>Ramal considerado offline após (minutos)</label>
-          <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(e.target.value)} style={inputStyle(colors)} />
-
-          <label style={labelStyle(colors)}>Repetir lembrete a cada (minutos, 0 = não repetir)</label>
-          <input type="number" min="0" value={reminderMinutes} onChange={(e) => setReminderMinutes(e.target.value)} style={inputStyle(colors)} />
-          <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: -10, marginBottom: 14 }}>
-            Enquanto o ramal continuar offline, manda um novo aviso no Telegram nesse intervalo.
-          </div>
-
-          <label style={labelStyle(colors)}>Alerta de disco cheio acima de (%)</label>
-          <input type="number" min="1" max="100" value={diskPercent} onChange={(e) => setDiskPercent(e.target.value)} style={inputStyle(colors)} />
-
-          <label style={labelStyle(colors)}>Alertar se um ramal somar mais de (minutos offline no mês, 0 = desativado)</label>
-          <input type="number" min="0" value={slaThresholdMinutes} onChange={(e) => setSlaThresholdMinutes(e.target.value)} style={inputStyle(colors)} />
-          <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: -10, marginBottom: 14 }}>
-            Pega ramal instável (cai e volta várias vezes) que nunca fica offline tempo suficiente pra disparar o alerta acima, mas que no total do mês já passou do aceitável.
-          </div>
-
-          <div style={sectionTitleStyle(colors)}>Notificação por Telegram (opcional)</div>
-          <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: -4, marginBottom: 12 }}>
-            Deixe em branco para não notificar. Fale com o @BotFather no Telegram para criar um bot.
-          </div>
-
-          <label style={labelStyle(colors)}>Bot Token</label>
-          <input value={telegramBotToken} onChange={(e) => setTelegramBotToken(e.target.value)} placeholder="123456789:AA..." style={inputStyle(colors)} />
-
-          <label style={labelStyle(colors)}>Chat ID</label>
-          <input value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)} placeholder="8873836707" style={inputStyle(colors)} />
-
-          <button
-            type="button"
-            onClick={handleTestTelegram}
-            disabled={testingTelegram || !telegramBotToken || !telegramChatId}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${colors.border}`, background: colors.bgCardAlt,
-              color: colors.textPrimary, borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600,
-              cursor: testingTelegram || !telegramBotToken || !telegramChatId ? 'default' : 'pointer',
-              opacity: !telegramBotToken || !telegramChatId ? 0.5 : 1, marginBottom: 10,
-            }}
-          >
-            <span style={{ display: 'inline-flex', animation: testingTelegram ? 'spinIcon 0.7s linear infinite' : 'none' }}>
-              <Icon paths={ICONS.refresh} size={14} strokeWidth={2.2} />
-            </span>
-            {testingTelegram ? 'Enviando...' : 'Testar notificação'}
-          </button>
-          {telegramTestError && <div style={{ color: colors.red, fontSize: 12.5, marginBottom: 14 }}>{telegramTestError}</div>}
-          {telegramTestMessage && !telegramTestError && <div style={{ color: colors.green, fontSize: 12.5, marginBottom: 14 }}>{telegramTestMessage}</div>}
-
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.textPrimary, marginBottom: 10, cursor: 'pointer' }}>
-            <input type="checkbox" checked={dailyDigestEnabled} onChange={(e) => setDailyDigestEnabled(e.target.checked)} />
-            Mandar resumo diário automático (dia anterior) no Telegram
-          </label>
-          {dailyDigestEnabled && (
-            <>
-              <label style={labelStyle(colors)}>Horário do resumo (0-23h)</label>
-              <input type="number" min="0" max="23" value={dailyDigestHour} onChange={(e) => setDailyDigestHour(e.target.value)} style={inputStyle(colors)} />
-            </>
-          )}
-
-          {error && <div style={{ color: colors.red, fontSize: 13, marginBottom: 14 }}>{error}</div>}
-          {message && !error && <div style={{ color: colors.green, fontSize: 13, marginBottom: 14 }}>{message}</div>}
-
-          <button
-            type="submit"
-            disabled={saving}
-            style={{ width: '100%', padding: '11px 12px', borderRadius: 10, border: 'none', background: colors.primary, color: '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
-          >
-            {saving ? 'Salvando...' : 'Salvar'}
-          </button>
-        </form>
-
-        <div style={{ padding: '0 26px 26px' }}>
-        <div style={sectionTitleStyle(colors)}>Usuários do painel</div>
-
-        {users.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            {users.map((u) => (
-              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, color: colors.textPrimary }}>{u.displayName}</span>
-                <span style={{ color: colors.textTertiary, fontSize: 12 }}>@{u.username}</span>
-                <span style={{
-                  fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, padding: '2px 7px', borderRadius: 99,
-                  color: u.role === 'admin' ? colors.primary : colors.textTertiary,
-                  background: u.role === 'admin' ? colors.primarySoft : colors.graySoft,
-                }}>
-                  {u.role === 'admin' ? 'Admin' : 'Usuário'}
-                </span>
-                {u.username !== currentUsername && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteUser(u.id)}
-                    style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    Remover
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <form onSubmit={handleAddUser}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-            <input
-              value={newUsername}
-              onChange={(e) => setNewUsername(e.target.value)}
-              placeholder="Usuário (login)"
-              required
-              style={{ ...inputStyle(colors), flex: '1 1 120px', marginBottom: 0 }}
-            />
-            <input
-              value={newDisplayName}
-              onChange={(e) => setNewDisplayName(e.target.value)}
-              placeholder="Nome de exibição"
-              style={{ ...inputStyle(colors), flex: '1 1 120px', marginBottom: 0 }}
-            />
-          </div>
-          <input
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Senha (mín. 6 caracteres)"
-            required
-            minLength={6}
-            style={inputStyle(colors)}
-          />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.textPrimary, marginBottom: 10, cursor: 'pointer' }}>
-            <input type="checkbox" checked={newIsAdmin} onChange={(e) => setNewIsAdmin(e.target.checked)} />
-            Administrador (pode editar Configurações e usuários)
-          </label>
-          {userError && <div style={{ color: colors.red, fontSize: 13, marginBottom: 10 }}>{userError}</div>}
-          <button
-            type="submit"
-            disabled={addingUser}
-            style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bgCardAlt, color: colors.textPrimary, fontWeight: 700, fontSize: 13, cursor: addingUser ? 'default' : 'pointer' }}
-          >
-            {addingUser ? 'Criando...' : 'Adicionar usuário'}
-          </button>
-        </form>
-
-        <div style={sectionTitleStyle(colors)}>Log de auditoria</div>
-        {auditLog.length === 0 ? (
-          <div style={{ fontSize: 12.5, color: colors.textTertiary }}>Nenhuma ação registrada ainda.</div>
-        ) : (
-          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-            {auditLog.map((entry) => (
-              <div key={entry.id} style={{ padding: '7px 0', borderBottom: `1px solid ${colors.border}`, fontSize: 12.5 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{ color: colors.textPrimary }}>
-                    <strong>@{entry.actorUsername}</strong> {auditActionLabel(entry.action)}
-                  </span>
-                  <span style={{ color: colors.textTertiary, flexShrink: 0 }}>{formatAuditDate(entry.at)}</span>
-                </div>
-                {entry.details && <div style={{ color: colors.textTertiary, fontSize: 11.5, marginTop: 2 }}>{entry.details}</div>}
-              </div>
-            ))}
-          </div>
-        )}
-        </div>
         </div>
       </div>
     </div>
