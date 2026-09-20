@@ -251,9 +251,13 @@ export async function getMissedCallsToday(limit = 50) {
   }
 }
 
-export async function getTodaySummary() {
+// Mesmo resumo de "hoje", mas pra um dia qualquer — usado pelo painel pra
+// deixar escolher "Ontem" ou uma data específica, não só o dia atual.
+export async function getDaySummary(date) {
+  const day = date || new Date().toISOString().slice(0, 10);
+
   if (config.forceMock) {
-    return { ...mockTodaySummary(), source: 'mock' };
+    return { ...mockTodaySummary(), date: day, source: 'mock' };
   }
 
   try {
@@ -267,19 +271,22 @@ export async function getTodaySummary() {
          AVG(NULLIF(billsec, 0)) AS avgDuration,
          SUM(billsec) AS totalDuration
        FROM cdr
-       WHERE calldate >= CURDATE()`
+       WHERE calldate >= ? AND calldate < DATE_ADD(?, INTERVAL 1 DAY)`,
+      [day, day]
     );
 
     const [mostUsedRows] = await pool.query(
       `SELECT src AS extension, COUNT(*) AS total
        FROM cdr
-       WHERE calldate >= CURDATE() AND dcontext LIKE 'from-internal%'
+       WHERE calldate >= ? AND calldate < DATE_ADD(?, INTERVAL 1 DAY) AND dcontext LIKE 'from-internal%'
        GROUP BY src
        ORDER BY total DESC
-       LIMIT 1`
+       LIMIT 1`,
+      [day, day]
     );
 
     return {
+      date: day,
       received: Number(totals.received) || 0,
       made: Number(totals.made) || 0,
       missed: Number(totals.missed) || 0,
@@ -290,6 +297,10 @@ export async function getTodaySummary() {
       source: 'cdr',
     };
   } catch (err) {
-    return { ...mockTodaySummary(), source: 'mock', error: err.message };
+    return { ...mockTodaySummary(), date: day, source: 'mock', error: err.message };
   }
+}
+
+export async function getTodaySummary() {
+  return getDaySummary(new Date().toISOString().slice(0, 10));
 }

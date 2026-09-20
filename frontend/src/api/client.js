@@ -56,7 +56,7 @@ export const api = {
   removeFavorite: (number) => request(`/api/extensions/${encodeURIComponent(number)}/favorite`, { method: 'DELETE' }),
   activeCalls: () => request('/api/calls/active'),
   callsSummary: (range) => request(`/api/calls/summary?range=${range}`),
-  todaySummary: () => request('/api/calls/today-summary'),
+  todaySummary: (date) => request(`/api/calls/today-summary${date ? `?date=${encodeURIComponent(date)}` : ''}`),
   missedCallsToday: () => request('/api/calls/missed-today'),
   extensionFailures: (params = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
