@@ -74,7 +74,11 @@ function resolveAlert(sourceKey) {
   const activeAlert = getActiveBySourceStmt.get(sourceKey);
   const info = resolveBySourceStmt.run(sourceKey);
   if (info.changes > 0 && activeAlert && activeAlert.notified_active) {
-    notify(activeAlert.id, `✅ Resolvido: ${activeAlert.message}`);
+    // Além de repetir o motivo original (que já traz "offline desde... —
+    // Xh sem conexão"), deixa explícito quando voltou — sem isso dava pra
+    // saber que resolveu, mas não a que horas, tendo que abrir o painel ou
+    // fazer conta de cabeça a partir da duração.
+    notify(activeAlert.id, `✅ Resolvido em ${formatDateTime(Date.now())}: ${activeAlert.message}`);
     clearNotifiedStmt.run(activeAlert.id);
   }
 }
