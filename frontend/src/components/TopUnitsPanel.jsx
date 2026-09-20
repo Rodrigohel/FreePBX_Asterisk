@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
 import { buildExtensionDirectory, describeCallParty } from '../utils/extensionDirectory.js';
+import { toMultiSectionCsv, downloadCsv } from '../utils/csv.js';
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -61,6 +62,29 @@ export default function TopUnitsPanel({ colors, extensions = [] }) {
 
   const directory = useMemo(() => buildExtensionDirectory(extensions), [extensions]);
 
+  function unitLabel(number) {
+    const party = describeCallParty(number, directory);
+    return party.isInternal ? `${party.label}${party.detail ? ` · ${party.detail}` : ''} (${number})` : number;
+  }
+
+  function handleExportCsv() {
+    const csv = toMultiSectionCsv([
+      {
+        heading: 'Mais ligaram para a portaria',
+        headers: ['Unidade', 'Chamadas'],
+        rows: report.mostActive.map((it) => [unitLabel(it.number), String(it.total)]),
+        emptyLabel: 'Nenhuma chamada nesse período.',
+      },
+      {
+        heading: 'Mais deixaram de atender',
+        headers: ['Unidade', 'Chamadas perdidas'],
+        rows: report.mostMissed.map((it) => [unitLabel(it.number), String(it.total)]),
+        emptyLabel: 'Nenhuma chamada perdida nesse período.',
+      },
+    ]);
+    downloadCsv(`ranking_unidades_${from}_a_${to}.csv`, csv);
+  }
+
   async function search() {
     setLoading(true);
     try {
@@ -102,6 +126,19 @@ export default function TopUnitsPanel({ colors, extensions = [] }) {
         >
           <Icon paths={ICONS.search} size={14} strokeWidth={2.2} />
           Buscar
+        </button>
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          disabled={loading || (report.mostActive.length === 0 && report.mostMissed.length === 0)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', border: `1px solid ${colors.border}`,
+            background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '7px 14px', fontSize: 12.5, fontWeight: 600,
+            cursor: 'pointer', opacity: loading || (report.mostActive.length === 0 && report.mostMissed.length === 0) ? 0.5 : 1,
+          }}
+        >
+          <Icon paths={ICONS.chevronDown} size={13} strokeWidth={2.2} />
+          Exportar CSV
         </button>
       </form>
 

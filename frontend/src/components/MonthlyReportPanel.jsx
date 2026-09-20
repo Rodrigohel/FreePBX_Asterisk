@@ -3,6 +3,7 @@ import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
 import { buildExtensionDirectory, describeCallParty } from '../utils/extensionDirectory.js';
 import { generateMonthlyReportPdf } from '../utils/pdf.js';
+import { toMultiSectionCsv, downloadCsv } from '../utils/csv.js';
 
 function currentMonthStr() {
   const d = new Date();
@@ -51,6 +52,7 @@ function formatDateTime(iso) {
 export default function MonthlyReportPanel({ colors, settings, extensions = [] }) {
   const [month, setMonth] = useState(currentMonthStr());
   const [generating, setGenerating] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const [error, setError] = useState('');
 
   const directory = useMemo(() => buildExtensionDirectory(extensions), [extensions]);
@@ -60,51 +62,56 @@ export default function MonthlyReportPanel({ colors, settings, extensions = [] }
     return party.isInternal ? `${party.label}${party.detail ? ` · ${party.detail}` : ''}` : number;
   }
 
+  async function buildSections() {
+    const { from, to } = monthRange(month);
+    const [summary, topUnits, failures] = await Promise.all([
+      api.periodSummary({ from, to }),
+      api.topUnitsReport({ from, to, limit: 10 }),
+      api.extensionFailures({ from, to }),
+    ]);
+
+    const sections = [
+      {
+        heading: 'Resumo geral',
+        headers: ['Recebidas', 'Realizadas', 'Perdidas', 'Com falha', 'Taxa de atendimento', 'Tempo médio', 'Tempo total', 'Ramal mais usado'],
+        rows: [[
+          String(summary.received), String(summary.made), String(summary.missed), String(summary.failed),
+          answeredRatePct(summary), `${Math.round(summary.avgDurationSeconds / 60)}min`,
+          formatDurationLong(summary.totalDurationSeconds), summary.mostUsedExtension ? unitLabel(summary.mostUsedExtension) : '—',
+        ]],
+      },
+      {
+        heading: 'Unidades que mais ligaram para a portaria',
+        headers: ['Unidade', 'Chamadas'],
+        rows: topUnits.mostActive.map((it) => [unitLabel(it.number), String(it.total)]),
+        emptyLabel: 'Nenhuma chamada no período.',
+      },
+      {
+        heading: 'Unidades que mais deixaram de atender',
+        headers: ['Unidade', 'Chamadas perdidas'],
+        rows: topUnits.mostMissed.map((it) => [unitLabel(it.number), String(it.total)]),
+        emptyLabel: 'Nenhuma chamada perdida no período. 🎉',
+      },
+      {
+        heading: 'Quedas de ramal no período',
+        headers: ['Ramal', 'Caiu em', 'Voltou em', 'Duração'],
+        rows: failures.data.map((inc) => [
+          unitLabel(inc.number), formatDateTime(inc.wentOfflineAt),
+          inc.wentOnlineAt ? formatDateTime(inc.wentOnlineAt) : 'Ainda offline',
+          formatDurationLong(inc.durationSeconds),
+        ]),
+        emptyLabel: 'Nenhuma queda registrada no período. 🎉',
+      },
+    ];
+
+    return { sections, from, to };
+  }
+
   async function handleGenerate() {
     setGenerating(true);
     setError('');
     try {
-      const { from, to } = monthRange(month);
-      const [summary, topUnits, failures] = await Promise.all([
-        api.periodSummary({ from, to }),
-        api.topUnitsReport({ from, to, limit: 10 }),
-        api.extensionFailures({ from, to }),
-      ]);
-
-      const sections = [
-        {
-          heading: 'Resumo geral',
-          headers: ['Recebidas', 'Realizadas', 'Perdidas', 'Com falha', 'Taxa de atendimento', 'Tempo médio', 'Tempo total', 'Ramal mais usado'],
-          rows: [[
-            String(summary.received), String(summary.made), String(summary.missed), String(summary.failed),
-            answeredRatePct(summary), `${Math.round(summary.avgDurationSeconds / 60)}min`,
-            formatDurationLong(summary.totalDurationSeconds), summary.mostUsedExtension ? unitLabel(summary.mostUsedExtension) : '—',
-          ]],
-        },
-        {
-          heading: 'Unidades que mais ligaram para a portaria',
-          headers: ['Unidade', 'Chamadas'],
-          rows: topUnits.mostActive.map((it) => [unitLabel(it.number), String(it.total)]),
-          emptyLabel: 'Nenhuma chamada no período.',
-        },
-        {
-          heading: 'Unidades que mais deixaram de atender',
-          headers: ['Unidade', 'Chamadas perdidas'],
-          rows: topUnits.mostMissed.map((it) => [unitLabel(it.number), String(it.total)]),
-          emptyLabel: 'Nenhuma chamada perdida no período. 🎉',
-        },
-        {
-          heading: 'Quedas de ramal no período',
-          headers: ['Ramal', 'Caiu em', 'Voltou em', 'Duração'],
-          rows: failures.data.map((inc) => [
-            unitLabel(inc.number), formatDateTime(inc.wentOfflineAt),
-            inc.wentOnlineAt ? formatDateTime(inc.wentOnlineAt) : 'Ainda offline',
-            formatDurationLong(inc.durationSeconds),
-          ]),
-          emptyLabel: 'Nenhuma queda registrada no período. 🎉',
-        },
-      ];
-
+      const { sections, from, to } = await buildSections();
       generateMonthlyReportPdf({
         title: `Relatório mensal — ${settings?.companyName || ''}`.trim(),
         subtitle: `${monthLabel(month)} · ${from} a ${to}`,
@@ -115,6 +122,20 @@ export default function MonthlyReportPanel({ colors, settings, extensions = [] }
       setError(err.message || 'Não foi possível gerar o relatório.');
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleExportCsv() {
+    setExportingCsv(true);
+    setError('');
+    try {
+      const { sections } = await buildSections();
+      const csv = toMultiSectionCsv(sections);
+      downloadCsv(`relatorio_mensal_${month}.csv`, csv);
+    } catch (err) {
+      setError(err.message || 'Não foi possível exportar.');
+    } finally {
+      setExportingCsv(false);
     }
   }
 
@@ -143,6 +164,19 @@ export default function MonthlyReportPanel({ colors, settings, extensions = [] }
         >
           <Icon paths={ICONS.chevronDown} size={13} strokeWidth={2.2} />
           {generating ? 'Gerando...' : 'Gerar PDF'}
+        </button>
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          disabled={exportingCsv}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${colors.border}`, background: colors.bgCardAlt,
+            color: colors.textPrimary, borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 600,
+            cursor: exportingCsv ? 'default' : 'pointer', opacity: exportingCsv ? 0.7 : 1,
+          }}
+        >
+          <Icon paths={ICONS.chevronDown} size={13} strokeWidth={2.2} />
+          {exportingCsv ? 'Exportando...' : 'Exportar CSV'}
         </button>
       </div>
       {error && <div style={{ color: colors.red, fontSize: 12.5, marginTop: 10 }}>{error}</div>}
