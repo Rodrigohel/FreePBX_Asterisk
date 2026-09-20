@@ -10,7 +10,7 @@ import { getSettings } from './settingsService.js';
 const upsertStmt = db.prepare(`
   INSERT INTO alerts (id, severity, message, created_at, status, source_key)
   VALUES (@id, @severity, @message, @created_at, @status, @source_key)
-  ON CONFLICT(id) DO UPDATE SET status = @status, message = @message
+  ON CONFLICT(id) DO UPDATE SET status = @status, message = @message, severity = @severity
 `);
 const resolveBySourceStmt = db.prepare(`UPDATE alerts SET status = 'resolved' WHERE source_key = ? AND status = 'active'`);
 const getByIdStmt = db.prepare(`SELECT status, last_notified_at, notified_active FROM alerts WHERE id = ?`);
@@ -19,6 +19,11 @@ const touchNotifiedStmt = db.prepare(`UPDATE alerts SET last_notified_at = ?, no
 const clearNotifiedStmt = db.prepare(`UPDATE alerts SET notified_active = 0 WHERE id = ?`);
 const listStmt = db.prepare(`SELECT * FROM alerts ORDER BY created_at DESC LIMIT 50`);
 const countActiveStmt = db.prepare(`SELECT COUNT(*) AS n FROM alerts WHERE status = 'active'`);
+const insertResolvedStmt = db.prepare(`
+  INSERT INTO alerts (id, severity, message, created_at, status, source_key)
+  VALUES (@id, @severity, @message, @created_at, 'resolved', @source_key)
+  ON CONFLICT(id) DO UPDATE SET severity = @severity, message = @message, created_at = @created_at, status = 'resolved'
+`);
 
 const SEVERITY_EMOJI = { critical: '🔴', warning: '🟠', info: 'ℹ️' };
 
@@ -162,6 +167,26 @@ export async function runAlertChecks() {
   } catch {
     // ignora
   }
+}
+
+// Usados pelo backupService: o backup diário aparece na mesma lista de
+// alertas/eventos resolvidos (severidade "info" quando dá certo), e como
+// alerta crítico de verdade — com notificação no Telegram — se falhar.
+// Reaproveita o mesmo `source_key` fixo pros dois casos: se falhar hoje e
+// der certo amanhã, o "resolvido" cai em cima do alerta crítico de ontem
+// (e dispara o aviso de recuperação), em vez de acumular uma linha nova
+// por dia.
+const BACKUP_SOURCE_KEY = 'daily-backup';
+
+export function recordBackupSuccess(message) {
+  resolveAlert(BACKUP_SOURCE_KEY);
+  insertResolvedStmt.run({
+    id: BACKUP_SOURCE_KEY, severity: 'info', message, created_at: new Date().toISOString(), source_key: BACKUP_SOURCE_KEY,
+  });
+}
+
+export function recordBackupFailure(message) {
+  upsertAlert({ id: BACKUP_SOURCE_KEY, severity: 'critical', message, status: 'active', source_key: BACKUP_SOURCE_KEY });
 }
 
 export async function getAlerts() {

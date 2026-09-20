@@ -50,6 +50,10 @@ export const config = {
 
   monitorIntervalMs: Number(process.env.MONITOR_INTERVAL_MS || 15000),
 
+  // Hora do dia (0-23, horário local do servidor) em que o backup
+  // automático do banco SQLite roda.
+  backupHour: Number(process.env.BACKUP_HOUR || 3),
+
   // Painel público (sem login): cada card pode ser ligado/desligado
   // independentemente. Pense com cuidado antes de ligar os marcados como
   // "dados sensíveis" — eles ficam visíveis para qualquer pessoa com o link,
