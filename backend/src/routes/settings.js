@@ -38,7 +38,7 @@ settingsRouter.get('/', (req, res) => {
 settingsRouter.put('/', (req, res) => {
   const {
     companyName, pbxName, alertExtensionOfflineMinutes, alertDiskUsagePercent, alertReminderIntervalMinutes,
-    porteiroExtensions, telegramBotToken, telegramChatId,
+    slaThresholdMinutesPerMonth, porteiroExtensions, telegramBotToken, telegramChatId,
   } = req.body || {};
   const updates = {};
 
@@ -67,6 +67,14 @@ settingsRouter.put('/', (req, res) => {
       return res.status(400).json({ error: 'Intervalo de lembrete deve ser um número de minutos (0 desativa).' });
     }
     updates.alertReminderIntervalMinutes = n;
+  }
+
+  if (slaThresholdMinutesPerMonth !== undefined) {
+    const n = Number(slaThresholdMinutesPerMonth);
+    if (!Number.isFinite(n) || n < 0) {
+      return res.status(400).json({ error: 'Limite de SLA deve ser um número de minutos (0 desativa).' });
+    }
+    updates.slaThresholdMinutesPerMonth = n;
   }
 
   if (typeof porteiroExtensions === 'string') {
