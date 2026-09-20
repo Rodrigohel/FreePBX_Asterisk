@@ -61,6 +61,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   const [activeCalls, setActiveCalls] = useState([]);
   const [trend, setTrend] = useState(null);
   const [todaySummary, setTodaySummary] = useState(null);
+  const [summaryDate, setSummaryDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [alerts, setAlerts] = useState([]);
   const [health, setHealth] = useState(null);
   const [extensionFilter, setExtensionFilter] = useState(null);
@@ -88,20 +89,28 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   }, [scrollToSection]);
 
   const loadAll = useCallback(async (currentRange) => {
-    const [statusRes, extRes, extSumRes, callsRes, trendRes, todayRes, alertsRes, healthRes, favRes] = await Promise.all([
+    const [statusRes, extRes, extSumRes, callsRes, trendRes, alertsRes, healthRes, favRes] = await Promise.all([
       api.status(), api.extensions(), api.extensionsSummary(), api.activeCalls(),
-      api.callsSummary(currentRange), api.todaySummary(), api.alerts(), api.serverHealth(), api.favorites(),
+      api.callsSummary(currentRange), api.alerts(), api.serverHealth(), api.favorites(),
     ]);
     setStatus(statusRes);
     setExtensions(extRes.data);
     setExtSummary(extSumRes);
     setActiveCalls(callsRes.data);
     setTrend(trendRes);
-    setTodaySummary(todayRes);
     setAlerts(alertsRes.data);
     setHealth(healthRes);
     setFavorites(favRes.data);
     setLastUpdate(new Date());
+  }, []);
+
+  // Separado do loadAll de propósito: o resumo de chamadas pode estar
+  // olhando pra um dia passado (escolhido no painel), então não deve ser
+  // resetado pra "hoje" a cada refresh geral do dashboard nem depender do
+  // `range` do gráfico — só recarrega quando a data escolhida muda (ou no
+  // polling, se a data escolhida ainda for hoje).
+  const loadDaySummary = useCallback((date) => {
+    api.todaySummary(date).then(setTodaySummary).catch(() => {});
   }, []);
 
   const handleToggleFavorite = useCallback(async (number, isFavorite) => {
@@ -124,6 +133,15 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   }, [loadAll, range]);
 
   useEffect(() => {
+    loadDaySummary(summaryDate);
+  }, [loadDaySummary, summaryDate]);
+
+  useEffect(() => {
+    const interval = setInterval(() => loadDaySummary(summaryDate), 15000);
+    return () => clearInterval(interval);
+  }, [loadDaySummary, summaryDate]);
+
+  useEffect(() => {
     const disconnect = connectLiveSocket((msg) => {
       if (msg.type === 'calls:active') setActiveCalls(msg.payload);
       if (msg.type === 'extensions') setExtensions(msg.payload);
@@ -138,11 +156,11 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await loadAll(range);
+      await Promise.all([loadAll(range), loadDaySummary(summaryDate)]);
     } finally {
       setTimeout(() => setRefreshing(false), 400);
     }
-  }, [loadAll, range]);
+  }, [loadAll, range, loadDaySummary, summaryDate]);
 
   if (!status || !trend || !todaySummary || !health) {
     return <LoadingScreen colors={colors} label="Carregando dashboard..." />;
@@ -285,7 +303,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
         </div>
 
         <div ref={todaySummarySectionRef} style={{ ...reveal(4), scrollMarginTop: 20 }}>
-          <TodaySummaryPanel colors={colors} summary={todaySummary} />
+          <TodaySummaryPanel colors={colors} summary={todaySummary} date={summaryDate} onDateChange={setSummaryDate} />
         </div>
 
         <div style={reveal(5)}>

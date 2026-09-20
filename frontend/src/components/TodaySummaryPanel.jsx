@@ -11,10 +11,27 @@ function formatShortDuration(totalSeconds) {
   return `${m}m${s}s`;
 }
 
-export default function TodaySummaryPanel({ colors, summary }) {
+function toDateStr(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function titleForDate(dateStr) {
+  if (!dateStr) return 'Resumo de chamadas de hoje';
+  const today = toDateStr(new Date());
+  const yesterday = toDateStr(new Date(Date.now() - 86400000));
+  if (dateStr === today) return 'Resumo de chamadas de hoje';
+  if (dateStr === yesterday) return 'Resumo de chamadas de ontem';
+  const [y, m, d] = dateStr.split('-');
+  return `Resumo de chamadas de ${d}/${m}/${y}`;
+}
+
+export default function TodaySummaryPanel({ colors, summary, date, onDateChange }) {
+  const today = toDateStr(new Date());
+  const yesterday = toDateStr(new Date(Date.now() - 86400000));
+
   const stats = [
-    { label: 'Recebidas hoje', value: String(summary.received), color: colors.textPrimary },
-    { label: 'Realizadas hoje', value: String(summary.made), color: colors.textPrimary },
+    { label: 'Recebidas', value: String(summary.received), color: colors.textPrimary },
+    { label: 'Realizadas', value: String(summary.made), color: colors.textPrimary },
     { label: 'Perdidas', value: String(summary.missed), color: colors.red },
     { label: 'Com falha', value: String(summary.failed), color: colors.amber },
     { label: 'Tempo médio', value: formatShortDuration(summary.avgDurationSeconds), color: colors.textPrimary },
@@ -24,7 +41,44 @@ export default function TodaySummaryPanel({ colors, summary }) {
 
   return (
     <div style={{ background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '18px 22px', boxShadow: colors.shadow }}>
-      <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 15, fontWeight: 600, color: colors.textPrimary, marginBottom: 12 }}>Resumo de chamadas de hoje</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 15, fontWeight: 600, color: colors.textPrimary }}>
+          {titleForDate(date)}
+        </div>
+
+        {onDateChange && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 4, background: colors.bgCardAlt, padding: 4, borderRadius: 10 }}>
+              {[{ key: today, label: 'Hoje' }, { key: yesterday, label: 'Ontem' }].map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => onDateChange(opt.key)}
+                  style={{
+                    border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                    background: date === opt.key ? colors.bgCard : 'transparent',
+                    color: date === opt.key ? colors.primary : colors.textSecondary,
+                    boxShadow: date === opt.key ? colors.shadow : 'none',
+                    transition: 'background .2s ease, color .2s ease, box-shadow .2s ease',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <input
+              type="date"
+              value={date || today}
+              max={today}
+              onChange={(e) => e.target.value && onDateChange(e.target.value)}
+              style={{
+                border: `1px solid ${colors.border}`, borderRadius: 10, padding: '7px 10px', fontSize: 12.5,
+                fontFamily: 'inherit', background: colors.bgCardAlt, color: colors.textPrimary,
+              }}
+            />
+          </div>
+        )}
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(130px,100%),1fr))', gap: 14 }}>
         {stats.map((st) => (
           <div key={st.label}>
