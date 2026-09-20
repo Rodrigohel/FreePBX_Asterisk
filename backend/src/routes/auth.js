@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { db } from '../db/sqlite.js';
 import { config } from '../config.js';
 import { requireAuth } from '../middleware/auth.js';
+import { logAction } from '../services/auditService.js';
 
 export const authRouter = Router();
 
@@ -24,6 +25,7 @@ authRouter.post('/login', (req, res) => {
     { expiresIn: config.auth.jwtExpiresIn }
   );
 
+  logAction(user.username, 'auth.login', null);
   res.json({ token, user: { username: user.username, displayName: user.display_name, role: user.role } });
 });
 
