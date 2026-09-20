@@ -312,6 +312,22 @@ aparecer o painel público, com o botão "Entrar" no canto superior direito.
 > ajuste as regras acima para `/`, `/api/` e `/ws`, e refaça o build do
 > frontend com `VITE_API_URL`/`VITE_WS_URL` apontando para esse domínio.
 
+## Atualizando
+
+Depois da instalação inicial (acima, manual, feita uma vez só), as
+próximas atualizações são só:
+
+```bash
+cd /opt/pbx-dashboard   # ou onde você instalou
+sudo ./update.sh
+```
+
+Isso busca a versão mais nova do código (`git pull`), reinstala
+dependências, rebuilda o frontend e reinicia só o processo Node deste
+painel (`pbx-dashboard-backend`) — **nunca mexe no Asterisk/FreePBX, no
+Apache/Nginx nem no usuário do AMI**, então é seguro rodar a qualquer
+momento sem risco de derrubar o telefone da empresa.
+
 ## Endpoints do backend
 
 O backend sobe em `http://localhost:3001` (padrão) com:
