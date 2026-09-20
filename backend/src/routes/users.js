@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../db/sqlite.js';
+import { logAction } from '../services/auditService.js';
 
 export const usersRouter = Router();
 
@@ -37,6 +38,7 @@ usersRouter.post('/', (req, res) => {
   const passwordHash = bcrypt.hashSync(password, 10);
   const cleanDisplayName = (displayName || '').trim() || cleanUsername;
   const info = insertStmt.run(cleanUsername, cleanDisplayName, passwordHash, cleanRole);
+  logAction(req.user.username, 'user.create', `criou @${cleanUsername} (${cleanRole})`);
 
   res.status(201).json(rowToUser({
     id: info.lastInsertRowid,
@@ -59,6 +61,8 @@ usersRouter.delete('/:id', (req, res) => {
   if (countStmt.get().n <= 1) {
     return res.status(400).json({ error: 'Não é possível remover o último usuário do painel.' });
   }
+  const target = db.prepare('SELECT username FROM users WHERE id = ?').get(id);
   deleteStmt.run(id);
+  logAction(req.user.username, 'user.delete', target ? `removeu @${target.username}` : `removeu id=${id}`);
   res.json({ ok: true });
 });

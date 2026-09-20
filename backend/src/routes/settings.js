@@ -4,6 +4,7 @@ import path from 'node:path';
 import multer from 'multer';
 import { getSettings, setSettings } from '../services/settingsService.js';
 import { sendTelegramMessageWith } from '../services/telegramService.js';
+import { logAction, getAuditLog } from '../services/auditService.js';
 
 export const settingsRouter = Router();
 
@@ -79,7 +80,13 @@ settingsRouter.put('/', (req, res) => {
   if (typeof telegramBotToken === 'string') updates.telegramBotToken = telegramBotToken.trim();
   if (typeof telegramChatId === 'string') updates.telegramChatId = telegramChatId.trim();
 
-  res.json(setSettings(updates));
+  const updated = setSettings(updates);
+  // Loga só os nomes dos campos alterados, nunca os valores — evita gravar
+  // segredo (token do Telegram) em texto puro na trilha de auditoria.
+  if (Object.keys(updates).length > 0) {
+    logAction(req.user.username, 'settings.update', Object.keys(updates).join(', '));
+  }
+  res.json(updated);
 });
 
 settingsRouter.post('/telegram/test', async (req, res) => {
@@ -108,6 +115,12 @@ settingsRouter.post('/logo', (req, res) => {
       return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
     }
     const logoUrl = `/api/uploads/${req.file.filename}`;
-    res.json(setSettings({ logoUrl }));
+    const updated = setSettings({ logoUrl });
+    logAction(req.user.username, 'settings.logo_upload', req.file.filename);
+    res.json(updated);
   });
+});
+
+settingsRouter.get('/audit-log', (req, res) => {
+  res.json({ data: getAuditLog({ limit: req.query.limit }) });
 });

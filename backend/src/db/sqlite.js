@@ -60,6 +60,17 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT
   );
+
+  -- Trilha de auditoria: quem fez login e quem mexeu em configurações/usuários,
+  -- pra dar rastreabilidade num painel administrado por mais de uma pessoa.
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_username TEXT NOT NULL,
+    action TEXT NOT NULL,
+    details TEXT,
+    at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_audit_log_at ON audit_log(at DESC);
 `);
 
 // Migração leve: `CREATE TABLE IF NOT EXISTS` acima não adiciona colunas

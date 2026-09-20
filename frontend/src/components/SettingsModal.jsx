@@ -10,6 +10,28 @@ const inputStyle = (colors) => ({
 const labelStyle = (colors) => ({ display: 'block', fontSize: 12.5, fontWeight: 600, color: colors.textSecondary, marginBottom: 6 });
 const sectionTitleStyle = (colors) => ({ fontSize: 12.5, fontWeight: 700, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4, margin: '18px 0 10px' });
 
+const AUDIT_ACTION_LABELS = {
+  'auth.login': 'Fez login',
+  'settings.update': 'Atualizou configurações',
+  'settings.logo_upload': 'Trocou o logo',
+  'user.create': 'Criou usuário',
+  'user.delete': 'Removeu usuário',
+};
+
+function auditActionLabel(action) {
+  return AUDIT_ACTION_LABELS[action] || action;
+}
+
+function formatAuditDate(iso) {
+  if (!iso) return '—';
+  // A coluna `at` do SQLite vem em UTC sem sufixo de fuso (datetime('now'));
+  // sem o "Z", o navegador interpretaria como hora local e mostraria a
+  // ação horas adiantada/atrasada.
+  return new Date(`${iso.replace(' ', 'T')}Z`).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
+}
+
 export default function SettingsModal({ colors, settings, onClose, onSaved, currentUsername }) {
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [pbxName, setPbxName] = useState(settings.pbxName);
@@ -29,6 +51,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
   const [telegramTestError, setTelegramTestError] = useState('');
   const fileInputRef = useRef(null);
 
+  const [auditLog, setAuditLog] = useState([]);
   const [users, setUsers] = useState([]);
   const [newUsername, setNewUsername] = useState('');
   const [newDisplayName, setNewDisplayName] = useState('');
@@ -49,6 +72,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
       setTelegramChatId(full.telegramChatId || '');
     }).catch(() => {});
     loadUsers();
+    api.auditLog({ limit: 20 }).then((res) => setAuditLog(res.data)).catch(() => {});
   }, []);
 
   function loadUsers() {
@@ -345,6 +369,25 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
             {addingUser ? 'Criando...' : 'Adicionar usuário'}
           </button>
         </form>
+
+        <div style={sectionTitleStyle(colors)}>Log de auditoria</div>
+        {auditLog.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: colors.textTertiary }}>Nenhuma ação registrada ainda.</div>
+        ) : (
+          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+            {auditLog.map((entry) => (
+              <div key={entry.id} style={{ padding: '7px 0', borderBottom: `1px solid ${colors.border}`, fontSize: 12.5 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ color: colors.textPrimary }}>
+                    <strong>@{entry.actorUsername}</strong> {auditActionLabel(entry.action)}
+                  </span>
+                  <span style={{ color: colors.textTertiary, flexShrink: 0 }}>{formatAuditDate(entry.at)}</span>
+                </div>
+                {entry.details && <div style={{ color: colors.textTertiary, fontSize: 11.5, marginTop: 2 }}>{entry.details}</div>}
+              </div>
+            ))}
+          </div>
+        )}
         </div>
         </div>
       </div>

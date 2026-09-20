@@ -101,6 +101,10 @@ export const api = {
     }
     return res.json();
   },
+  auditLog: (params = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
+    return request(`/api/settings/audit-log?${qs.toString()}`);
+  },
   users: () => request('/api/users'),
   createUser: (data) => request('/api/users', { method: 'POST', body: JSON.stringify(data) }),
   deleteUser: (id) => request(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
