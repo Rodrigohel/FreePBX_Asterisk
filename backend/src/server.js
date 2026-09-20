@@ -12,6 +12,7 @@ import { settingsRouter } from './routes/settings.js';
 import { usersRouter } from './routes/users.js';
 import { requireAuth, requireAdmin } from './middleware/auth.js';
 import { runAlertChecks } from './services/alertsService.js';
+import { scheduleDailyBackup } from './services/backupService.js';
 import { getActiveCalls } from './services/callsService.js';
 import { getExtensions } from './services/extensionsService.js';
 import './db/sqlite.js';
@@ -100,6 +101,11 @@ async function scheduleAlertChecks() {
   }
 }
 scheduleAlertChecks();
+
+// Backup diário do banco SQLite (dashboard.db). Aparece em Alertas: como
+// alerta crítico (com Telegram) se falhar, como item "resolvido" discreto
+// (sem Telegram) se der certo.
+scheduleDailyBackup();
 
 server.listen(config.port, () => {
   console.log(`[dashboard-backend] ouvindo em http://localhost:${config.port} (mock=${config.forceMock})`);
