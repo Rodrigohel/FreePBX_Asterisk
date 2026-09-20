@@ -46,7 +46,19 @@ export function recordExtensionState(number, state, name) {
   }
 
   if (previous.state === state) {
-    return; // nada mudou — evita gravar no banco a cada polling
+    // O estado (string) não mudou — não é uma transição, então não grava
+    // evento de queda/volta. MAS, se está online, ainda precisa atualizar
+    // "visto online pela última vez" a cada verificação: sem isso, um ramal
+    // que fica firme e estável online por horas nunca tem esse timestamp
+    // atualizado (só é gravado quando o estado MUDA), e aí um soluço rápido
+    // de re-registro SIP (que dura poucos segundos) faz o cálculo de "há
+    // quanto tempo está offline" usar aquele timestamp parado de horas
+    // atrás, relatando uma queda de horas onde na real houve um blip de
+    // segundos — some antes mesmo de terminar de notificar.
+    if (isOnlineState(state)) {
+      upsertLastSeenStmt.run({ number, name, state, last_seen_online: now, updated_at: now });
+    }
+    return;
   }
 
   const wasOnline = isOnlineState(previous.state);
