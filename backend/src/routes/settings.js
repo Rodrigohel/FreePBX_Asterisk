@@ -39,6 +39,7 @@ settingsRouter.put('/', (req, res) => {
   const {
     companyName, pbxName, alertExtensionOfflineMinutes, alertDiskUsagePercent, alertReminderIntervalMinutes,
     slaThresholdMinutesPerMonth, porteiroExtensions, telegramBotToken, telegramChatId,
+    dailyDigestEnabled, dailyDigestHour,
   } = req.body || {};
   const updates = {};
 
@@ -87,6 +88,16 @@ settingsRouter.put('/', (req, res) => {
 
   if (typeof telegramBotToken === 'string') updates.telegramBotToken = telegramBotToken.trim();
   if (typeof telegramChatId === 'string') updates.telegramChatId = telegramChatId.trim();
+
+  if (dailyDigestEnabled !== undefined) updates.dailyDigestEnabled = dailyDigestEnabled ? 'true' : 'false';
+
+  if (dailyDigestHour !== undefined) {
+    const n = Number(dailyDigestHour);
+    if (!Number.isFinite(n) || n < 0 || n > 23) {
+      return res.status(400).json({ error: 'Hora do resumo diário deve ser um número entre 0 e 23.' });
+    }
+    updates.dailyDigestHour = n;
+  }
 
   const updated = setSettings(updates);
   // Loga só os nomes dos campos alterados, nunca os valores — evita gravar

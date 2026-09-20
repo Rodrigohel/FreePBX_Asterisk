@@ -43,6 +43,8 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
   const [porteiroExtensions, setPorteiroExtensions] = useState('');
   const [telegramBotToken, setTelegramBotToken] = useState('');
   const [telegramChatId, setTelegramChatId] = useState('');
+  const [dailyDigestEnabled, setDailyDigestEnabled] = useState(false);
+  const [dailyDigestHour, setDailyDigestHour] = useState('8');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
@@ -72,6 +74,8 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
       setPorteiroExtensions(full.porteiroExtensions || '');
       setTelegramBotToken(full.telegramBotToken || '');
       setTelegramChatId(full.telegramChatId || '');
+      setDailyDigestEnabled(full.dailyDigestEnabled === 'true');
+      setDailyDigestHour(String(full.dailyDigestHour ?? '8'));
     }).catch(() => {});
     loadUsers();
     api.auditLog({ limit: 20 }).then((res) => setAuditLog(res.data)).catch(() => {});
@@ -95,6 +99,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
         slaThresholdMinutesPerMonth: slaThresholdMinutes,
         porteiroExtensions,
         telegramBotToken, telegramChatId,
+        dailyDigestEnabled, dailyDigestHour,
       });
       setMessage('Salvo!');
       onSaved?.();
@@ -297,6 +302,17 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
           </button>
           {telegramTestError && <div style={{ color: colors.red, fontSize: 12.5, marginBottom: 14 }}>{telegramTestError}</div>}
           {telegramTestMessage && !telegramTestError && <div style={{ color: colors.green, fontSize: 12.5, marginBottom: 14 }}>{telegramTestMessage}</div>}
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.textPrimary, marginBottom: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={dailyDigestEnabled} onChange={(e) => setDailyDigestEnabled(e.target.checked)} />
+            Mandar resumo diário automático (dia anterior) no Telegram
+          </label>
+          {dailyDigestEnabled && (
+            <>
+              <label style={labelStyle(colors)}>Horário do resumo (0-23h)</label>
+              <input type="number" min="0" max="23" value={dailyDigestHour} onChange={(e) => setDailyDigestHour(e.target.value)} style={inputStyle(colors)} />
+            </>
+          )}
 
           {error && <div style={{ color: colors.red, fontSize: 13, marginBottom: 14 }}>{error}</div>}
           {message && !error && <div style={{ color: colors.green, fontSize: 13, marginBottom: 14 }}>{message}</div>}
