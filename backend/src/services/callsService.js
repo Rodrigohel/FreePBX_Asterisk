@@ -108,6 +108,14 @@ const RANGE_TO_SQL = {
     groupExpr: "YEARWEEK(calldate, 3)",
     labelFormatter: (v, i) => `Sem ${i + 1}`,
   },
+  '12m': {
+    where: 'calldate >= DATE_SUB(DATE_FORMAT(CURDATE(), "%Y-%m-01"), INTERVAL 11 MONTH)',
+    groupExpr: "DATE_FORMAT(calldate, '%Y-%m')",
+    labelFormatter: (v) => {
+      const [year, month] = v.split('-').map(Number);
+      return new Date(year, month - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+    },
+  },
 };
 
 export async function getCallsSummary(range) {

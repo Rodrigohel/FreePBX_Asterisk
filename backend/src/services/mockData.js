@@ -46,6 +46,21 @@ const TREND_MOCK = {
   today: { categories: ['08h', '10h', '12h', '14h', '16h', '18h', '20h'], recebidas: [4, 9, 14, 18, 12, 8, 3], realizadas: [3, 7, 10, 13, 9, 6, 2], perdidas: [0, 1, 2, 1, 1, 0, 0], falhas: [0, 0, 1, 0, 1, 0, 0] },
   '7d': { categories: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'], recebidas: [62, 71, 68, 75, 80, 22, 10], realizadas: [48, 53, 50, 58, 61, 15, 8], perdidas: [4, 3, 5, 2, 4, 1, 0], falhas: [1, 0, 2, 1, 1, 0, 0] },
   '30d': { categories: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'], recebidas: [410, 455, 398, 470], realizadas: [312, 340, 301, 355], perdidas: [18, 22, 15, 20], falhas: [4, 6, 3, 5] },
+  '12m': (() => {
+    const categories = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      categories.push(d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''));
+    }
+    // Leve tendência de crescimento mês a mês, pra ficar plausível num
+    // condomínio com ocupação subindo — não é aleatório, é só uma progressão.
+    const recebidas = [1180, 1210, 1250, 1190, 1300, 1340, 1280, 1360, 1400, 1370, 1420, 1450];
+    const realizadas = [905, 920, 950, 915, 985, 1010, 970, 1030, 1060, 1040, 1075, 1095];
+    const perdidas = [58, 52, 61, 49, 55, 63, 47, 60, 66, 58, 62, 65];
+    const falhas = [12, 9, 14, 8, 11, 13, 9, 12, 15, 10, 13, 11];
+    return { categories, recebidas, realizadas, perdidas, falhas };
+  })(),
 };
 
 export function mockCallsSummary(range) {

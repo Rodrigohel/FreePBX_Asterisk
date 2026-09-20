@@ -52,7 +52,7 @@ dashboardRouter.get('/calls/active', async (req, res) => {
 });
 
 dashboardRouter.get('/calls/summary', async (req, res) => {
-  const range = ['today', '7d', '30d'].includes(req.query.range) ? req.query.range : 'today';
+  const range = ['today', '7d', '30d', '12m'].includes(req.query.range) ? req.query.range : 'today';
   res.json(await getCallsSummary(range));
 });
 
