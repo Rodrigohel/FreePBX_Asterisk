@@ -293,13 +293,15 @@ export async function getMissedCallsToday(limit = 50) {
   }
 }
 
-// Mesmo resumo de "hoje", mas pra um dia qualquer — usado pelo painel pra
-// deixar escolher "Ontem" ou uma data específica, não só o dia atual.
-export async function getDaySummary(date) {
-  const day = date || new Date().toISOString().slice(0, 10);
+// Resumo agregado num período (de "from" até "to", inclusive) — usado tanto
+// pra um único dia (getDaySummary, from = to) quanto pra um mês inteiro no
+// relatório mensal.
+export async function getPeriodSummary({ from, to } = {}) {
+  const fromDate = from || new Date().toISOString().slice(0, 10);
+  const toDate = to || fromDate;
 
   if (config.forceMock) {
-    return { ...mockTodaySummary(), date: day, source: 'mock' };
+    return { ...mockTodaySummary(), from: fromDate, to: toDate, source: 'mock' };
   }
 
   try {
@@ -319,7 +321,7 @@ export async function getDaySummary(date) {
          SELECT *, ${directionSql} AS direction FROM cdr
          WHERE calldate >= ? AND calldate < DATE_ADD(?, INTERVAL 1 DAY)
        ) t`,
-      [...directionParams, day, day]
+      [...directionParams, fromDate, toDate]
     );
 
     const [mostUsedRows] = await pool.query(
@@ -332,11 +334,11 @@ export async function getDaySummary(date) {
        GROUP BY src
        ORDER BY total DESC
        LIMIT 1`,
-      [...directionParams, day, day]
+      [...directionParams, fromDate, toDate]
     );
 
     return {
-      date: day,
+      from: fromDate, to: toDate,
       received: Number(totals.received) || 0,
       made: Number(totals.made) || 0,
       missed: Number(totals.missed) || 0,
@@ -347,8 +349,16 @@ export async function getDaySummary(date) {
       source: 'cdr',
     };
   } catch (err) {
-    return { ...mockTodaySummary(), date: day, source: 'mock', error: err.message };
+    return { ...mockTodaySummary(), from: fromDate, to: toDate, source: 'mock', error: err.message };
   }
+}
+
+// Mesmo resumo, mas pra um dia qualquer — usado pelo painel pra deixar
+// escolher "Ontem" ou uma data específica, não só o dia atual.
+export async function getDaySummary(date) {
+  const day = date || new Date().toISOString().slice(0, 10);
+  const result = await getPeriodSummary({ from: day, to: day });
+  return { ...result, date: day };
 }
 
 export async function getTodaySummary() {

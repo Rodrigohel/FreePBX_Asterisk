@@ -57,6 +57,7 @@ export const api = {
   activeCalls: () => request('/api/calls/active'),
   callsSummary: (range) => request(`/api/calls/summary?range=${range}`),
   todaySummary: (date) => request(`/api/calls/today-summary${date ? `?date=${encodeURIComponent(date)}` : ''}`),
+  periodSummary: ({ from, to }) => request(`/api/calls/period-summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   missedCallsToday: () => request('/api/calls/missed-today'),
   topUnitsReport: (params = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
