@@ -24,6 +24,10 @@ const DEFAULTS = {
   porteiroExtensions: process.env.PORTEIRO_EXTENSIONS || '993,994,995,996,998',
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
   telegramChatId: process.env.TELEGRAM_CHAT_ID || '',
+  // Resumo diário automático (resumo do dia anterior, mandado sozinho de
+  // manhã) — reaproveita as mesmas credenciais do Telegram acima.
+  dailyDigestEnabled: 'false',
+  dailyDigestHour: String(process.env.DAILY_DIGEST_HOUR || 8),
 };
 
 const ALLOWED_KEYS = new Set(Object.keys(DEFAULTS));
