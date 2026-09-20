@@ -17,6 +17,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
   const [offlineMinutes, setOfflineMinutes] = useState('120');
   const [diskPercent, setDiskPercent] = useState('80');
   const [reminderMinutes, setReminderMinutes] = useState('60');
+  const [porteiroExtensions, setPorteiroExtensions] = useState('');
   const [telegramBotToken, setTelegramBotToken] = useState('');
   const [telegramChatId, setTelegramChatId] = useState('');
   const [saving, setSaving] = useState(false);
@@ -43,6 +44,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
       setOfflineMinutes(String(full.alertExtensionOfflineMinutes ?? '120'));
       setDiskPercent(String(full.alertDiskUsagePercent ?? '80'));
       setReminderMinutes(String(full.alertReminderIntervalMinutes ?? '60'));
+      setPorteiroExtensions(full.porteiroExtensions || '');
       setTelegramBotToken(full.telegramBotToken || '');
       setTelegramChatId(full.telegramChatId || '');
     }).catch(() => {});
@@ -64,6 +66,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
         alertExtensionOfflineMinutes: offlineMinutes,
         alertDiskUsagePercent: diskPercent,
         alertReminderIntervalMinutes: reminderMinutes,
+        porteiroExtensions,
         telegramBotToken, telegramChatId,
       });
       setMessage('Salvo!');
@@ -204,6 +207,19 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
 
           <label style={labelStyle(colors)}>Nome do sistema / PBX</label>
           <input value={pbxName} onChange={(e) => setPbxName(e.target.value)} style={inputStyle(colors)} />
+
+          <div style={sectionTitleStyle(colors)}>Chamadas</div>
+
+          <label style={labelStyle(colors)}>Ramais da portaria (separados por vírgula)</label>
+          <input
+            value={porteiroExtensions}
+            onChange={(e) => setPorteiroExtensions(e.target.value)}
+            placeholder="993,994,995,996,998"
+            style={inputStyle(colors)}
+          />
+          <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: -10, marginBottom: 14 }}>
+            Usado pra decidir "Recebida" (chegou pra portaria) e "Realizada" (saiu da portaria) no resumo e no histórico de chamadas. Deixe em branco pra usar o critério antigo (interno vs. linha externa).
+          </div>
 
           <div style={sectionTitleStyle(colors)}>Alertas</div>
 

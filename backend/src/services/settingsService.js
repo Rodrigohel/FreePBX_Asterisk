@@ -13,6 +13,12 @@ const DEFAULTS = {
   alertExtensionOfflineMinutes: String(process.env.ALERT_EXTENSION_OFFLINE_MINUTES || 120),
   alertDiskUsagePercent: String(process.env.ALERT_DISK_USAGE_PERCENT || 80),
   alertReminderIntervalMinutes: String(process.env.ALERT_REMINDER_INTERVAL_MINUTES || 60),
+  // Ramais da portaria/interfone — usados pra classificar chamadas como
+  // "recebida" (chegou pra portaria) ou "realizada" (saiu da portaria) do
+  // ponto de vista de quem atende o interfone, em vez de "interno vs.
+  // linha externa" (que não faz sentido quando porteiro e apartamento são
+  // ambos ramais do mesmo PBX). Separados por vírgula.
+  porteiroExtensions: process.env.PORTEIRO_EXTENSIONS || '993,994,995,996,998',
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
   telegramChatId: process.env.TELEGRAM_CHAT_ID || '',
 };

@@ -1,6 +1,7 @@
 import { amiClient } from '../ami/amiClient.js';
 import { getCdrPool } from './cdrClient.js';
 import { config } from '../config.js';
+import { getSettings } from './settingsService.js';
 import { mockActiveCalls, mockCallsSummary, mockTodaySummary } from './mockData.js';
 
 function stateFromChannelState(channelStateDesc) {
@@ -47,6 +48,49 @@ export async function getActiveCalls() {
   }
 }
 
+// Ramais da portaria/interfone, configuráveis em Configurações. Servem pra
+// classificar "recebida" (chegou pra portaria) vs. "realizada" (saiu da
+// portaria) do ponto de vista de quem atende o interfone — já que porteiro
+// e apartamento são ambos ramais internos do mesmo PBX, a distinção antiga
+// "chamada interna vs. linha externa" não tinha nada a ver com quem ligou
+// pra quem, e classificava toda chamada porteiro<->apartamento como
+// "realizada" (por ter sido discada por um ramal interno), mesmo quando o
+// morador é quem ligou pra portaria.
+function getPorteiroNumbers() {
+  const raw = getSettings().porteiroExtensions || '';
+  return raw.split(',').map((n) => n.trim()).filter(Boolean);
+}
+
+// Monta a expressão SQL (com seus parâmetros, na ordem em que os "?"
+// aparecem no texto) que classifica cada linha do CDR como 'received' ou
+// 'made'. Com ramal(is) de portaria configurado(s): quem discou (src) é a
+// portaria -> 'made'; quem recebeu (dst) é a portaria -> 'received'.
+// Chamada que não envolve nenhum ramal de portaria (ex.: apartamento
+// ligando pra outro apartamento, ou uma linha externa de verdade) cai no
+// critério antigo como reserva. Sem nenhum ramal de portaria configurado,
+// usa só o critério antigo.
+function directionCaseSql(porteiroNumbers) {
+  const fallback = `CASE WHEN dcontext LIKE 'from-internal%' THEN 'made' ELSE 'received' END`;
+  if (porteiroNumbers.length === 0) {
+    return { sql: fallback, params: [] };
+  }
+  const placeholders = porteiroNumbers.map(() => '?').join(',');
+  return {
+    sql: `CASE
+            WHEN src IN (${placeholders}) THEN 'made'
+            WHEN dst IN (${placeholders}) THEN 'received'
+            ELSE (${fallback})
+          END`,
+    params: [...porteiroNumbers, ...porteiroNumbers],
+  };
+}
+
+function directionOf(row, porteiroNumbers) {
+  if (porteiroNumbers.includes(row.src)) return 'made';
+  if (porteiroNumbers.includes(row.dst)) return 'received';
+  return row.dcontext && row.dcontext.startsWith('from-internal') ? 'made' : 'received';
+}
+
 const RANGE_TO_SQL = {
   today: {
     where: 'calldate >= CURDATE()',
@@ -75,18 +119,17 @@ export async function getCallsSummary(range) {
 
   try {
     const pool = await getCdrPool();
-    // dcontext 'from-internal' = originada internamente (realizada);
-    // demais contextos 'from-trunk'/'from-pstn' etc = recebida externamente.
+    const { sql: directionSql, params: directionParams } = directionCaseSql(getPorteiroNumbers());
     const [rows] = await pool.query(
       `SELECT ${cfg.groupExpr} AS bucket,
-              SUM(CASE WHEN dcontext NOT LIKE 'from-internal%' THEN 1 ELSE 0 END) AS recebidas,
-              SUM(CASE WHEN dcontext LIKE 'from-internal%' THEN 1 ELSE 0 END) AS realizadas,
+              SUM(CASE WHEN direction = 'received' THEN 1 ELSE 0 END) AS recebidas,
+              SUM(CASE WHEN direction = 'made' THEN 1 ELSE 0 END) AS realizadas,
               SUM(CASE WHEN disposition = 'NO ANSWER' THEN 1 ELSE 0 END) AS perdidas,
               SUM(CASE WHEN disposition = 'FAILED' THEN 1 ELSE 0 END) AS falhas
-       FROM cdr
-       WHERE ${cfg.where}
+       FROM (SELECT *, ${directionSql} AS direction FROM cdr WHERE ${cfg.where}) t
        GROUP BY bucket
-       ORDER BY bucket ASC`
+       ORDER BY bucket ASC`,
+      directionParams
     );
 
     const categories = rows.map((r, i) => cfg.labelFormatter(String(r.bucket), i));
@@ -101,16 +144,13 @@ export async function getCallsSummary(range) {
   }
 }
 
-function directionOf(dcontext) {
-  return dcontext && dcontext.startsWith('from-internal') ? 'made' : 'received';
-}
-
 export async function getExtensionCallsToday(number, limit = 20) {
   if (config.forceMock) {
     return { data: [], source: 'mock' };
   }
   try {
     const pool = await getCdrPool();
+    const porteiroNumbers = getPorteiroNumbers();
     const [rows] = await pool.query(
       `SELECT calldate, src, dst, disposition, billsec, dcontext
        FROM cdr
@@ -125,7 +165,7 @@ export async function getExtensionCallsToday(number, limit = 20) {
       dst: r.dst,
       disposition: r.disposition,
       durationSeconds: r.billsec,
-      direction: directionOf(r.dcontext),
+      direction: directionOf(r, porteiroNumbers),
     }));
     return { data, source: 'cdr' };
   } catch (err) {
@@ -146,6 +186,7 @@ export async function searchCallHistory({ q, from, to, page = 1, pageSize = 25 }
 
   try {
     const pool = await getCdrPool();
+    const porteiroNumbers = getPorteiroNumbers();
     const like = q ? `%${q}%` : null;
     const whereClauses = ['calldate >= ?', 'calldate < DATE_ADD(?, INTERVAL 1 DAY)'];
     const params = [fromDate, toDate];
@@ -171,7 +212,7 @@ export async function searchCallHistory({ q, from, to, page = 1, pageSize = 25 }
       dst: r.dst,
       disposition: r.disposition,
       durationSeconds: r.billsec,
-      direction: directionOf(r.dcontext),
+      direction: directionOf(r, porteiroNumbers),
     }));
 
     return { data, total: Number(total), page: safePage, pageSize: safePageSize, source: 'cdr' };
@@ -193,6 +234,7 @@ export async function exportCallHistory({ q, from, to }) {
 
   try {
     const pool = await getCdrPool();
+    const porteiroNumbers = getPorteiroNumbers();
     const like = q ? `%${q}%` : null;
     const whereClauses = ['calldate >= ?', 'calldate < DATE_ADD(?, INTERVAL 1 DAY)'];
     const params = [fromDate, toDate];
@@ -217,7 +259,7 @@ export async function exportCallHistory({ q, from, to }) {
       dst: r.dst,
       disposition: r.disposition,
       durationSeconds: r.billsec,
-      direction: directionOf(r.dcontext),
+      direction: directionOf(r, porteiroNumbers),
     }));
 
     return { data, source: 'cdr' };
@@ -262,27 +304,35 @@ export async function getDaySummary(date) {
 
   try {
     const pool = await getCdrPool();
+    const porteiroNumbers = getPorteiroNumbers();
+    const { sql: directionSql, params: directionParams } = directionCaseSql(porteiroNumbers);
+
     const [[totals]] = await pool.query(
       `SELECT
-         SUM(CASE WHEN dcontext NOT LIKE 'from-internal%' THEN 1 ELSE 0 END) AS received,
-         SUM(CASE WHEN dcontext LIKE 'from-internal%' THEN 1 ELSE 0 END) AS made,
+         SUM(CASE WHEN direction = 'received' THEN 1 ELSE 0 END) AS received,
+         SUM(CASE WHEN direction = 'made' THEN 1 ELSE 0 END) AS made,
          SUM(CASE WHEN disposition = 'NO ANSWER' THEN 1 ELSE 0 END) AS missed,
          SUM(CASE WHEN disposition = 'FAILED' THEN 1 ELSE 0 END) AS failed,
          AVG(NULLIF(billsec, 0)) AS avgDuration,
          SUM(billsec) AS totalDuration
-       FROM cdr
-       WHERE calldate >= ? AND calldate < DATE_ADD(?, INTERVAL 1 DAY)`,
-      [day, day]
+       FROM (
+         SELECT *, ${directionSql} AS direction FROM cdr
+         WHERE calldate >= ? AND calldate < DATE_ADD(?, INTERVAL 1 DAY)
+       ) t`,
+      [...directionParams, day, day]
     );
 
     const [mostUsedRows] = await pool.query(
       `SELECT src AS extension, COUNT(*) AS total
-       FROM cdr
-       WHERE calldate >= ? AND calldate < DATE_ADD(?, INTERVAL 1 DAY) AND dcontext LIKE 'from-internal%'
+       FROM (
+         SELECT *, ${directionSql} AS direction FROM cdr
+         WHERE calldate >= ? AND calldate < DATE_ADD(?, INTERVAL 1 DAY)
+       ) t
+       WHERE direction = 'made'
        GROUP BY src
        ORDER BY total DESC
        LIMIT 1`,
-      [day, day]
+      [...directionParams, day, day]
     );
 
     return {
