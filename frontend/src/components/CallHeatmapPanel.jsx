@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
+import { toCsv, downloadCsv } from '../utils/csv.js';
 
 const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -53,6 +54,20 @@ export default function CallHeatmapPanel({ colors }) {
   }
 
   const grid = new Map(cells.map((c) => [`${c.dow}-${c.hour}`, c.total]));
+
+  function handleExportCsv() {
+    // Exporta a matriz completa (todos os 7x24 cruzamentos, mesmo com 0
+    // chamadas) em vez de só as células com movimento — fica pronto pra
+    // virar tabela dinâmica no Excel sem buracos.
+    const rows = [];
+    for (let dow = 0; dow < 7; dow++) {
+      for (let hour = 0; hour < 24; hour++) {
+        rows.push([DAY_LABELS[dow], `${hour}h`, String(grid.get(`${dow}-${hour}`) || 0)]);
+      }
+    }
+    const csv = toCsv(['Dia da semana', 'Hora', 'Chamadas'], rows);
+    downloadCsv(`horarios_de_pico_${from}_a_${to}.csv`, csv);
+  }
   const max = Math.max(1, ...cells.map((c) => c.total));
 
   return (
@@ -79,6 +94,19 @@ export default function CallHeatmapPanel({ colors }) {
         >
           <Icon paths={ICONS.search} size={14} strokeWidth={2.2} />
           Buscar
+        </button>
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          disabled={loading || cells.length === 0}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', border: `1px solid ${colors.border}`,
+            background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '7px 14px', fontSize: 12.5, fontWeight: 600,
+            cursor: 'pointer', opacity: loading || cells.length === 0 ? 0.5 : 1,
+          }}
+        >
+          <Icon paths={ICONS.chevronDown} size={13} strokeWidth={2.2} />
+          Exportar CSV
         </button>
       </form>
 
