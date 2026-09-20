@@ -63,6 +63,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   const [activeCalls, setActiveCalls] = useState([]);
   const [trend, setTrend] = useState(null);
   const [todaySummary, setTodaySummary] = useState(null);
+  const [previousDaySummary, setPreviousDaySummary] = useState(null);
   const [summaryDate, setSummaryDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [alerts, setAlerts] = useState([]);
   const [health, setHealth] = useState(null);
@@ -113,7 +114,11 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   // `range` do gráfico — só recarrega quando a data escolhida muda (ou no
   // polling, se a data escolhida ainda for hoje).
   const loadDaySummary = useCallback((date) => {
-    api.todaySummary(date).then(setTodaySummary).catch(() => {});
+    const previousDate = new Date(new Date(`${date}T00:00:00`).getTime() - 86400000).toISOString().slice(0, 10);
+    return Promise.all([
+      api.todaySummary(date).then(setTodaySummary),
+      api.todaySummary(previousDate).then(setPreviousDaySummary).catch(() => setPreviousDaySummary(null)),
+    ]).catch(() => {});
   }, []);
 
   const handleToggleFavorite = useCallback(async (number, isFavorite) => {
@@ -307,7 +312,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
         </div>
 
         <div ref={todaySummarySectionRef} style={{ ...reveal(4), scrollMarginTop: 20 }}>
-          <TodaySummaryPanel colors={colors} summary={todaySummary} date={summaryDate} onDateChange={setSummaryDate} />
+          <TodaySummaryPanel colors={colors} summary={todaySummary} previousSummary={previousDaySummary} date={summaryDate} onDateChange={setSummaryDate} />
         </div>
 
         <div style={reveal(5)}>

@@ -15,6 +15,16 @@ function toDateStr(d) {
   return d.toISOString().slice(0, 10);
 }
 
+// % de chamadas atendidas sobre o total (recebidas + realizadas), excluindo
+// perdidas e com falha. null quando não há chamadas suficientes pra calcular.
+function answeredRate(summary) {
+  if (!summary) return null;
+  const total = (summary.received || 0) + (summary.made || 0);
+  if (total === 0) return null;
+  const answered = total - (summary.missed || 0) - (summary.failed || 0);
+  return answered / total;
+}
+
 function titleForDate(dateStr) {
   if (!dateStr) return 'Resumo de chamadas de hoje';
   const today = toDateStr(new Date());
@@ -25,15 +35,25 @@ function titleForDate(dateStr) {
   return `Resumo de chamadas de ${d}/${m}/${y}`;
 }
 
-export default function TodaySummaryPanel({ colors, summary, date, onDateChange }) {
+export default function TodaySummaryPanel({ colors, summary, previousSummary, date, onDateChange }) {
   const today = toDateStr(new Date());
   const yesterday = toDateStr(new Date(Date.now() - 86400000));
+
+  const rate = answeredRate(summary);
+  const previousRate = answeredRate(previousSummary);
+  const rateDeltaPts = rate !== null && previousRate !== null ? Math.round((rate - previousRate) * 100) : null;
 
   const stats = [
     { label: 'Recebidas', value: String(summary.received), color: colors.textPrimary },
     { label: 'Realizadas', value: String(summary.made), color: colors.textPrimary },
     { label: 'Perdidas', value: String(summary.missed), color: colors.red },
     { label: 'Com falha', value: String(summary.failed), color: colors.amber },
+    {
+      label: 'Taxa de atendimento',
+      value: rate === null ? '—' : `${Math.round(rate * 100)}%`,
+      color: rate === null ? colors.textPrimary : rate >= 0.9 ? colors.green : rate >= 0.7 ? colors.amber : colors.red,
+      trend: rateDeltaPts,
+    },
     { label: 'Tempo médio', value: formatShortDuration(summary.avgDurationSeconds), color: colors.textPrimary },
     { label: 'Tempo total', value: formatDuration(summary.totalDurationSeconds), color: colors.textPrimary },
     { label: 'Ramal mais usado', value: summary.mostUsedExtension || '—', color: colors.primary },
@@ -83,7 +103,17 @@ export default function TodaySummaryPanel({ colors, summary, date, onDateChange 
         {stats.map((st) => (
           <div key={st.label}>
             <div style={{ fontSize: 12, color: colors.textSecondary, fontWeight: 600 }}>{st.label}</div>
-            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 20, fontWeight: 700, color: st.color, marginTop: 2 }}>{st.value}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 20, fontWeight: 700, color: st.color, marginTop: 2 }}>{st.value}</div>
+              {st.trend !== undefined && st.trend !== null && st.trend !== 0 && (
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: st.trend > 0 ? colors.green : colors.red }}>
+                  {st.trend > 0 ? '↑' : '↓'} {Math.abs(st.trend)}pts
+                </span>
+              )}
+            </div>
+            {st.trend !== undefined && st.trend !== null && (
+              <div style={{ fontSize: 10.5, color: colors.textTertiary, marginTop: 1 }}>vs. dia anterior</div>
+            )}
           </div>
         ))}
       </div>
