@@ -328,6 +328,22 @@ painel (`pbx-dashboard-backend`) — **nunca mexe no Asterisk/FreePBX, no
 Apache/Nginx nem no usuário do AMI**, então é seguro rodar a qualquer
 momento sem risco de derrubar o telefone da empresa.
 
+## Build adicional para embutir noutro sistema (iframe)
+
+Se este painel precisa ser embutido via `<iframe>` dentro de outro sistema
+(ex.: um "Portal" que serve vários painéis sob `/apps/*`), gere um build
+separado — **não** mexe no `frontend/dist` usado pelo `update.sh` acima:
+
+```bash
+cd /opt/pbx-dashboard   # ou onde você instalou
+./build-embed.sh
+# ou, pra mudar o subcaminho (padrão: /apps/interfone/):
+BASE_PATH=/apps/outro-nome/ ./build-embed.sh
+```
+
+Gera `frontend/dist-embed/`, pronto pra copiar pro Portal ou servir
+diretamente desse caminho.
+
 ## Endpoints do backend
 
 O backend sobe em `http://localhost:3001` (padrão) com:
