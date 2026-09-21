@@ -344,6 +344,24 @@ BASE_PATH=/apps/outro-nome/ ./build-embed.sh
 Gera `frontend/dist-embed/`, pronto pra copiar pro Portal ou servir
 diretamente desse caminho.
 
+Esse build usa três variáveis de ambiente do Vite (só nesse build separado —
+não afetam o build normal em `frontend/dist`):
+
+- **`VITE_BASE_PATH`** (`/apps/interfone/` por padrão, ajustável via
+  `BASE_PATH=...`) — de onde os arquivos JS/CSS são servidos.
+- **`VITE_API_URL`** (fixo em `/gateway/interfone`) — as chamadas de API
+  passam a ir pro proxy autenticado do Portal em vez de bater direto na
+  origem do painel.
+- **`VITE_EMBEDDED`** (fixo em `true`) — ativa o "login único": em vez de
+  pedir login de novo, o painel reusa o token de sessão que o Portal já
+  deixou em `localStorage.portal_token` (só funciona se os dois estiverem
+  na mesma origem/domínio, já que `localStorage` não atravessa origens).
+
+Atualizações em tempo real via WebSocket não funcionam no modo embutido (o
+proxy do Portal só cobre HTTP) — isso é esperado: o painel simplesmente não
+recebe os pushes ao vivo (chamadas ativas, estado de ramal), sem quebrar o
+resto da tela, e continua funcionando com os dados carregados via HTTP.
+
 ## Endpoints do backend
 
 O backend sobe em `http://localhost:3001` (padrão) com:

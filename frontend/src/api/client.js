@@ -13,7 +13,7 @@ export function setToken(token) {
 }
 
 async function request(path, options = {}) {
-  const token = getToken();
+  const token = import.meta.env.VITE_EMBEDDED === 'true' ? localStorage.getItem('portal_token') : getToken();
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {

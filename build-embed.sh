@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Gera um build ADICIONAL do frontend, num diretório à parte
 # (frontend/dist-embed), pra embutir este painel via iframe dentro de outro
-# sistema (ex.: um "Portal" que serve vários painéis sob /apps/*).
+# sistema (ex.: um "Portal" que serve vários painéis sob /apps/*, com login
+# único: mesma origem, reusa o token de sessão do Portal em vez de pedir
+# login de novo — ver VITE_EMBEDDED no README).
 #
 # NÃO mexe no build normal (frontend/dist, usado pelo update.sh) nem reinicia
 # nenhum serviço — só gera arquivos estáticos num diretório separado.
@@ -23,7 +25,7 @@ cd "$SCRIPT_DIR/frontend"
 BASE_PATH="${BASE_PATH:-/apps/interfone/}"
 
 log "Buildando frontend em frontend/dist-embed (base: $BASE_PATH)"
-VITE_BASE_PATH="$BASE_PATH" npx vite build --outDir dist-embed
+VITE_BASE_PATH="$BASE_PATH" VITE_API_URL=/gateway/interfone VITE_EMBEDDED=true npx vite build --outDir dist-embed
 
 echo -e "\n${c_green}Pronto.${c_reset}"
 info "Build gerado em: $SCRIPT_DIR/frontend/dist-embed"
