@@ -2,15 +2,16 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
 import { toCsv, downloadCsv } from '../utils/csv.js';
+import { localDateStr, daysAgoLocalStr } from '../utils/localDate.js';
 
 const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateStr();
 }
 
 function daysAgoIso(days) {
-  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  return daysAgoLocalStr(days);
 }
 
 function intensityColor(colors, ratio) {

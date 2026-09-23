@@ -6,6 +6,7 @@ import { getLastSeenOnline, getDowntimeReport } from './extensionState.js';
 import { mockAlerts } from './mockData.js';
 import { sendTelegramMessage } from './telegramService.js';
 import { getSettings } from './settingsService.js';
+import { localDateStr } from '../utils/localDate.js';
 
 const upsertStmt = db.prepare(`
   INSERT INTO alerts (id, severity, message, created_at, status, source_key)
@@ -154,7 +155,7 @@ export async function runAlertChecks() {
       if (slaThresholdMinutes > 0) {
         const now = new Date();
         const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-        const today = now.toISOString().slice(0, 10);
+        const today = localDateStr(now);
         const incidents = getDowntimeReport({ from: monthStart, to: today });
         const totalSecondsByNumber = new Map();
         for (const inc of incidents) {

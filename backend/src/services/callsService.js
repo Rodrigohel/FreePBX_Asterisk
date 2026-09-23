@@ -3,6 +3,7 @@ import { getCdrPool } from './cdrClient.js';
 import { config } from '../config.js';
 import { getSettings } from './settingsService.js';
 import { mockActiveCalls, mockCallsSummary, mockTodaySummary, mockTopUnitsReport, mockCallHeatmap } from './mockData.js';
+import { localDateStr, daysAgoLocalStr } from '../utils/localDate.js';
 
 function stateFromChannelState(channelStateDesc) {
   const s = (channelStateDesc || '').toLowerCase();
@@ -185,8 +186,8 @@ export async function searchCallHistory({ q, from, to, page = 1, pageSize = 25 }
   const safePage = Math.max(1, Number(page) || 1);
   const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 25));
   const offset = (safePage - 1) * safePageSize;
-  const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-  const toDate = to || new Date().toISOString().slice(0, 10);
+  const fromDate = from || daysAgoLocalStr(30);
+  const toDate = to || localDateStr();
 
   if (config.forceMock) {
     return { data: [], total: 0, page: safePage, pageSize: safePageSize, source: 'mock' };
@@ -233,8 +234,8 @@ export async function searchCallHistory({ q, from, to, page = 1, pageSize = 25 }
 // um relatório em CSV. Limitado a 5000 linhas por chamada como proteção
 // contra períodos gigantes sem filtro.
 export async function exportCallHistory({ q, from, to }) {
-  const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-  const toDate = to || new Date().toISOString().slice(0, 10);
+  const fromDate = from || daysAgoLocalStr(30);
+  const toDate = to || localDateStr();
 
   if (config.forceMock) {
     return { data: [], source: 'mock' };
@@ -305,7 +306,7 @@ export async function getMissedCallsToday(limit = 50) {
 // pra um único dia (getDaySummary, from = to) quanto pra um mês inteiro no
 // relatório mensal.
 export async function getPeriodSummary({ from, to } = {}) {
-  const fromDate = from || new Date().toISOString().slice(0, 10);
+  const fromDate = from || localDateStr();
   const toDate = to || fromDate;
 
   if (config.forceMock) {
@@ -364,13 +365,13 @@ export async function getPeriodSummary({ from, to } = {}) {
 // Mesmo resumo, mas pra um dia qualquer — usado pelo painel pra deixar
 // escolher "Ontem" ou uma data específica, não só o dia atual.
 export async function getDaySummary(date) {
-  const day = date || new Date().toISOString().slice(0, 10);
+  const day = date || localDateStr();
   const result = await getPeriodSummary({ from: day, to: day });
   return { ...result, date: day };
 }
 
 export async function getTodaySummary() {
-  return getDaySummary(new Date().toISOString().slice(0, 10));
+  return getDaySummary(localDateStr());
 }
 
 // Ranking das unidades que mais ligaram pra portaria (do ponto de vista da
@@ -379,8 +380,8 @@ export async function getTodaySummary() {
 // destino, excluindo a própria portaria) — útil pro síndico identificar
 // unidades com uso atípico ou que raramente atendem o interfone.
 export async function getTopUnitsReport({ from, to, limit = 10 } = {}) {
-  const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-  const toDate = to || new Date().toISOString().slice(0, 10);
+  const fromDate = from || daysAgoLocalStr(30);
+  const toDate = to || localDateStr();
   const safeLimit = Math.min(50, Math.max(1, Number(limit) || 10));
 
   if (config.forceMock) {
@@ -431,8 +432,8 @@ export async function getTopUnitsReport({ from, to, limit = 10 } = {}) {
 // Volume de chamadas por dia da semana x hora, num período — mostra os
 // horários de pico do interfone pra ajudar a planejar escala da portaria.
 export async function getCallHeatmap({ from, to } = {}) {
-  const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-  const toDate = to || new Date().toISOString().slice(0, 10);
+  const fromDate = from || daysAgoLocalStr(30);
+  const toDate = to || localDateStr();
 
   if (config.forceMock) {
     return { ...mockCallHeatmap(), from: fromDate, to: toDate, source: 'mock' };

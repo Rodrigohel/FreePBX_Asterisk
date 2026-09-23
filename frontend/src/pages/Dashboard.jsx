@@ -22,6 +22,7 @@ import CallHeatmapPanel from '../components/CallHeatmapPanel.jsx';
 import MonthlyReportPanel from '../components/MonthlyReportPanel.jsx';
 import MonthlyTrendPanel from '../components/MonthlyTrendPanel.jsx';
 import LoadingScreen from '../components/LoadingScreen.jsx';
+import { localDateStr } from '../utils/localDate.js';
 
 const THEME_KEY = 'pbx_dashboard_theme';
 
@@ -66,7 +67,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   const [trend, setTrend] = useState(null);
   const [todaySummary, setTodaySummary] = useState(null);
   const [previousDaySummary, setPreviousDaySummary] = useState(null);
-  const [summaryDate, setSummaryDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [summaryDate, setSummaryDate] = useState(() => localDateStr());
   const [alerts, setAlerts] = useState([]);
   const [health, setHealth] = useState(null);
   const [extensionFilter, setExtensionFilter] = useState(null);
@@ -116,7 +117,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   // `range` do gráfico — só recarrega quando a data escolhida muda (ou no
   // polling, se a data escolhida ainda for hoje).
   const loadDaySummary = useCallback((date) => {
-    const previousDate = new Date(new Date(`${date}T00:00:00`).getTime() - 86400000).toISOString().slice(0, 10);
+    const previousDate = localDateStr(new Date(new Date(`${date}T00:00:00`).getTime() - 86400000));
     return Promise.all([
       api.todaySummary(date).then(setTodaySummary),
       api.todaySummary(previousDate).then(setPreviousDaySummary).catch(() => setPreviousDaySummary(null)),

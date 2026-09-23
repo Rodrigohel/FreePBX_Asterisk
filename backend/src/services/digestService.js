@@ -2,9 +2,10 @@ import { config } from '../config.js';
 import { getSettings } from './settingsService.js';
 import { getPeriodSummary } from './callsService.js';
 import { sendTelegramMessage } from './telegramService.js';
+import { daysAgoLocalStr } from '../utils/localDate.js';
 
 function yesterdayIso() {
-  return new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  return daysAgoLocalStr(1);
 }
 
 function formatDuration(seconds) {

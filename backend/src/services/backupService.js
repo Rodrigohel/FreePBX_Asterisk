@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { db } from '../db/sqlite.js';
 import { config } from '../config.js';
 import { recordBackupSuccess, recordBackupFailure } from './alertsService.js';
+import { localDateStr } from '../utils/localDate.js';
 
 const BACKUPS_DIR = path.resolve('data/backups');
 // ~2 semanas de histórico: dá margem pra perceber um problema que só foi
@@ -10,7 +11,7 @@ const BACKUPS_DIR = path.resolve('data/backups');
 const KEEP_BACKUPS = 14;
 
 function backupFilename(date = new Date()) {
-  return `dashboard-${date.toISOString().slice(0, 10)}.db`;
+  return `dashboard-${localDateStr(date)}.db`;
 }
 
 function rotateOldBackups() {
