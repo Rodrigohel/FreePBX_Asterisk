@@ -1,3 +1,5 @@
+import { localDateStr } from '../utils/localDate.js';
+
 function formatDuration(totalSeconds) {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.round((totalSeconds % 3600) / 60);
@@ -12,7 +14,7 @@ function formatShortDuration(totalSeconds) {
 }
 
 function toDateStr(d) {
-  return d.toISOString().slice(0, 10);
+  return localDateStr(d);
 }
 
 // % de chamadas atendidas sobre o total (recebidas + realizadas), excluindo

@@ -4,6 +4,7 @@ import Icon, { ICONS } from './Icon.jsx';
 import { buildExtensionDirectory, describeCallParty } from '../utils/extensionDirectory.js';
 import { generateMonthlyReportPdf } from '../utils/pdf.js';
 import { toMultiSectionCsv, downloadCsv } from '../utils/csv.js';
+import { localDateStr } from '../utils/localDate.js';
 
 function currentMonthStr() {
   const d = new Date();
@@ -14,7 +15,7 @@ function monthRange(monthStr) {
   const [year, month] = monthStr.split('-').map(Number);
   const from = `${monthStr}-01`;
   const lastDay = new Date(year, month, 0).getDate();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   const lastOfMonth = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
   const to = lastOfMonth > today ? today : lastOfMonth;
   return { from, to };

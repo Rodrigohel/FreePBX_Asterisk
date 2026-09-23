@@ -4,13 +4,14 @@ import Icon, { ICONS } from './Icon.jsx';
 import { buildExtensionDirectory, describeCallParty } from '../utils/extensionDirectory.js';
 import { toCsv, downloadCsv } from '../utils/csv.js';
 import { generateReportPdf } from '../utils/pdf.js';
+import { localDateStr, daysAgoLocalStr } from '../utils/localDate.js';
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateStr();
 }
 
 function daysAgoIso(days) {
-  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  return daysAgoLocalStr(days);
 }
 
 function formatDurationLong(seconds) {
