@@ -5,7 +5,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 
 export default function App() {
-  const { user, checking, login, loginTotp, logout, refreshUser, isAuthenticated } = useAuth();
+  const { user, checking, login, completeTotpLogin, logout, isAuthenticated } = useAuth();
   const { settings, reloadSettings } = useSettings();
 
   if (checking) {
@@ -13,8 +13,8 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <PublicDashboard onLogin={login} onLoginTotp={loginTotp} settings={settings} />;
+    return <PublicDashboard onLogin={login} onCompleteTotp={completeTotpLogin} settings={settings} />;
   }
 
-  return <Dashboard user={user} onLogout={logout} onRefreshUser={refreshUser} settings={settings} reloadSettings={reloadSettings} />;
+  return <Dashboard user={user} onLogout={logout} settings={settings} reloadSettings={reloadSettings} />;
 }

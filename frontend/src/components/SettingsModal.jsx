@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
 import Logo from './Logo.jsx';
@@ -41,6 +42,7 @@ const TABS = [
   { key: 'alerts', label: 'Alertas' },
   { key: 'notifications', label: 'Notificações' },
   { key: 'users', label: 'Usuários' },
+  { key: 'security', label: 'Segurança' },
   { key: 'audit', label: 'Auditoria' },
 ];
 
@@ -216,10 +218,11 @@ function UsersTab({
                 </span>
               )}
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-                {u.totpEnabled && u.username !== currentUsername && (
+                {u.totpEnabled && (
                   <button
                     type="button"
                     onClick={() => handleDisableUserTotp(u.id, u.username)}
+                    title="Desativar 2FA (se a pessoa perdeu o acesso)"
                     style={{ border: 'none', background: 'transparent', color: colors.textSecondary, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                   >
                     Desativar 2FA
@@ -279,6 +282,154 @@ function UsersTab({
           {addingUser ? 'Criando...' : 'Adicionar usuário'}
         </button>
       </form>
+    </>
+  );
+}
+
+function SecurityTab({ colors }) {
+  const [me, setMe] = useState(null);
+  const [error, setError] = useState('');
+  const [step, setStep] = useState('idle'); // idle | setup | recovery
+  const [setupData, setSetupData] = useState(null);
+  const [code, setCode] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState(null);
+  const [disableCode, setDisableCode] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = () => api.me().then(setMe).catch((err) => setError(err.message));
+  useEffect(() => { load(); }, []);
+
+  async function handleStartSetup() {
+    setError('');
+    setBusy(true);
+    try {
+      const { secret, otpauthUri } = await api.totpSetup();
+      const qrDataUrl = await QRCode.toDataURL(otpauthUri, { width: 168, margin: 1 });
+      setSetupData({ secret, qrDataUrl });
+      setStep('setup');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleConfirmEnable(e) {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const { recoveryCodes: codes } = await api.totpEnable(setupData.secret, code);
+      setRecoveryCodes(codes);
+      setStep('recovery');
+      setCode('');
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleFinishSetup() {
+    setStep('idle');
+    setSetupData(null);
+    setRecoveryCodes(null);
+  }
+
+  async function handleDisable(e) {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      await api.totpDisable(disableCode);
+      setDisableCode('');
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <div style={sectionTitleStyle(colors)}>Autenticação em duas etapas (2FA)</div>
+      {!me && !error && <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 14 }}>Carregando...</div>}
+
+      {step === 'recovery' && recoveryCodes && (
+        <div style={{ border: `1px solid ${colors.amber}`, background: colors.amberSoft, borderRadius: 10, padding: 12, marginBottom: 14 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: colors.textPrimary, marginBottom: 6 }}>2FA ativado! Guarde estes códigos de recuperação:</div>
+          <div style={{ fontSize: 11.5, color: colors.textSecondary, marginBottom: 8 }}>
+            Cada um funciona uma única vez, caso você perca o acesso ao app autenticador. Salve num lugar seguro — eles não aparecem de novo.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontFamily: 'monospace', fontSize: 12.5, color: colors.textPrimary, marginBottom: 10 }}>
+            {recoveryCodes.map((c) => <div key={c}>{c}</div>)}
+          </div>
+          <button type="button" onClick={handleFinishSetup} style={{ border: 'none', background: colors.primary, color: '#fff', borderRadius: 8, padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+            Já salvei, entendi
+          </button>
+        </div>
+      )}
+
+      {step === 'setup' && setupData && (
+        <form onSubmit={handleConfirmEnable} style={{ border: `1px solid ${colors.border}`, borderRadius: 10, padding: 12, marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 12 }}>
+            <img src={setupData.qrDataUrl} alt="QR code" width={140} height={140} style={{ borderRadius: 8, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <div style={{ fontSize: 12.5, color: colors.textSecondary, marginBottom: 6 }}>
+                Escaneie com Google Authenticator, Authy ou similar. Não consegue escanear? Digite manualmente:
+              </div>
+              <div style={{ fontFamily: 'monospace', fontSize: 12, background: colors.bgCardAlt, border: `1px solid ${colors.border}`, borderRadius: 6, padding: '5px 8px', wordBreak: 'break-all' }}>
+                {setupData.secret}
+              </div>
+            </div>
+          </div>
+          <label style={labelStyle(colors)}>Código gerado pelo app, pra confirmar</label>
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="123456"
+            autoFocus
+            style={{ ...inputStyle(colors), fontFamily: 'monospace', letterSpacing: '.08em' }}
+          />
+          {error && <div style={{ color: colors.red, fontSize: 13, marginBottom: 10 }}>{error}</div>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="submit" disabled={busy} style={{ border: 'none', background: colors.primary, color: '#fff', borderRadius: 8, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.7 : 1 }}>
+              {busy ? 'Confirmando...' : 'Ativar 2FA'}
+            </button>
+            <button type="button" onClick={() => { setStep('idle'); setSetupData(null); setError(''); }} style={{ border: `1px solid ${colors.border}`, background: 'transparent', color: colors.textSecondary, borderRadius: 8, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+
+      {step === 'idle' && me && (
+        <>
+          {me.totpEnabled ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, fontSize: 13, color: colors.green, fontWeight: 700 }}>
+                <Icon paths={ICONS.shield} size={14} strokeWidth={2} /> 2FA ativado na sua conta
+              </div>
+              <form onSubmit={handleDisable} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
+                <div style={{ flex: 1, minWidth: 160, marginBottom: 0 }}>
+                  <label style={labelStyle(colors)}>Código atual (pra desativar)</label>
+                  <input value={disableCode} onChange={(e) => setDisableCode(e.target.value)} placeholder="123456" style={{ ...inputStyle(colors), fontFamily: 'monospace', marginBottom: 0 }} />
+                </div>
+                <button type="submit" disabled={busy || !disableCode} style={{ border: `1px solid ${colors.red}`, background: 'transparent', color: colors.red, borderRadius: 8, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', opacity: (busy || !disableCode) ? 0.5 : 1 }}>
+                  Desativar 2FA
+                </button>
+              </form>
+            </>
+          ) : (
+            <button type="button" onClick={handleStartSetup} disabled={busy} style={{ border: 'none', background: colors.primary, color: '#fff', borderRadius: 9, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
+              {busy ? 'Gerando...' : 'Ativar 2FA'}
+            </button>
+          )}
+          {error && <div style={{ color: colors.red, fontSize: 13, marginBottom: 10 }}>{error}</div>}
+        </>
+      )}
     </>
   );
 }
@@ -528,7 +679,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
     setUserError('');
     if (!window.confirm(`Desativar a verificação em duas etapas de @${username}?`)) return;
     try {
-      await api.disableUserTotp(id);
+      await api.adminDisableTotp(id);
       loadUsers();
     } catch (err) {
       setUserError(err.message || 'Não foi possível desativar o 2FA desse usuário.');
@@ -625,6 +776,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
                 newIsAdmin={newIsAdmin} setNewIsAdmin={setNewIsAdmin} userError={userError} addingUser={addingUser}
               />
             )}
+            {tab === 'security' && <SecurityTab colors={colors} />}
             {tab === 'audit' && <AuditTab colors={colors} />}
 
             {showSaveBar && (

@@ -14,7 +14,6 @@ import ServerHealthPanel from '../components/ServerHealthPanel.jsx';
 import ServerHealthTrendPanel from '../components/ServerHealthTrendPanel.jsx';
 import TodaySummaryPanel from '../components/TodaySummaryPanel.jsx';
 import SettingsModal from '../components/SettingsModal.jsx';
-import AccountModal from '../components/AccountModal.jsx';
 import ExtensionDetailModal from '../components/ExtensionDetailModal.jsx';
 import CallHistoryPanel from '../components/CallHistoryPanel.jsx';
 import MissedCallsPanel from '../components/MissedCallsPanel.jsx';
@@ -53,14 +52,13 @@ function greeting() {
   return 'Boa noite';
 }
 
-export default function Dashboard({ user, onLogout, onRefreshUser, settings, reloadSettings }) {
+export default function Dashboard({ user, onLogout, settings, reloadSettings }) {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
   const [range, setRange] = useState('today');
   const [refreshing, setRefreshing] = useState(false);
   const [refreshHover, setRefreshHover] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [showSettings, setShowSettings] = useState(false);
-  const [showAccount, setShowAccount] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [status, setStatus] = useState(null);
@@ -221,7 +219,6 @@ export default function Dashboard({ user, onLogout, onRefreshUser, settings, rel
         user={user}
         onLogout={onLogout}
         onOpenSettings={user?.role === 'admin' ? () => { setShowSettings(true); setSidebarOpen(false); } : undefined}
-        onOpenAccount={() => { setShowAccount(true); setSidebarOpen(false); }}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -354,15 +351,6 @@ export default function Dashboard({ user, onLogout, onRefreshUser, settings, rel
           onClose={() => setShowSettings(false)}
           onSaved={reloadSettings}
           currentUsername={user?.username}
-        />
-      )}
-
-      {showAccount && (
-        <AccountModal
-          colors={colors}
-          user={user}
-          onClose={() => setShowAccount(false)}
-          onRefreshUser={onRefreshUser}
         />
       )}
 
