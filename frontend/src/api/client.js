@@ -25,16 +25,16 @@ async function request(path, options = {}) {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    // Um 401 na própria rota de login significa "senha/código errado" (o
-    // usuário nem tem token ainda) — bem diferente de um 401 numa rota
-    // protegida, que significa "sua sessão expirou", e aí sim precisa
-    // limpar o token guardado.
-    if (res.status === 401 && path !== '/api/auth/login') {
+    // Um 401 nas rotas de login (usuário/senha ou código do 2FA) significa
+    // "credenciais erradas" (o usuário nem tem uma sessão ainda) — bem
+    // diferente de um 401 numa rota protegida, que significa "sua sessão
+    // expirou", e aí sim precisa limpar o token guardado.
+    const isLoginRoute = path === '/api/auth/login' || path === '/api/auth/login/totp';
+    if (res.status === 401 && !isLoginRoute) {
       setToken(null);
     }
     const err = new Error(body.error || `Erro ${res.status}`);
     err.status = res.status;
-    if (body.requiresTotp) err.requiresTotp = true;
     throw err;
   }
 
@@ -47,12 +47,15 @@ export function resolveAssetUrl(path) {
 }
 
 export const api = {
-  login: (username, password, totpCode) =>
-    request('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password, totpCode }) }),
+  login: (username, password) =>
+    request('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  loginTotp: (totpToken, code) =>
+    request('/api/auth/login/totp', { method: 'POST', body: JSON.stringify({ totpToken, code }) }),
   me: () => request('/api/auth/me'),
-  setup2FA: () => request('/api/auth/2fa/setup', { method: 'POST' }),
-  confirm2FA: (code) => request('/api/auth/2fa/confirm', { method: 'POST', body: JSON.stringify({ code }) }),
-  disable2FA: (password) => request('/api/auth/2fa/disable', { method: 'POST', body: JSON.stringify({ password }) }),
+  setupTotp: () => request('/api/auth/totp/setup', { method: 'POST' }),
+  enableTotp: (secret, code) => request('/api/auth/totp/enable', { method: 'POST', body: JSON.stringify({ secret, code }) }),
+  disableTotp: (code) => request('/api/auth/totp/disable', { method: 'POST', body: JSON.stringify({ code }) }),
+  disableUserTotp: (id) => request(`/api/users/${encodeURIComponent(id)}/totp-disable`, { method: 'POST' }),
   status: () => request('/api/status'),
   extensions: () => request('/api/extensions'),
   extensionsSummary: () => request('/api/extensions/summary'),
