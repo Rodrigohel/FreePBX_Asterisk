@@ -142,3 +142,25 @@ export function mockServerHealth() {
     ],
   };
 }
+
+// Série de amostras a cada 5min cobrindo `hours` horas, com uma leve
+// oscilação senoidal em torno da base de mockServerHealth() — só pra ter
+// algo plausível pra desenhar no gráfico de tendência em modo demonstração.
+export function mockHealthHistory(hours) {
+  const base = mockServerHealth();
+  const points = Math.round((hours * 60) / 5);
+  const now = Date.now();
+  const data = [];
+  for (let i = points; i >= 0; i--) {
+    const at = new Date(now - i * 5 * 60000).toISOString();
+    const wave = Math.sin(i / 6) * 8;
+    data.push({
+      at,
+      cpuPercent: Math.max(1, Math.min(100, Math.round(base.cpuPercent + wave))),
+      memoryPercent: Math.max(1, Math.min(100, Math.round(base.memoryPercent + wave / 2))),
+      diskPercent: base.diskPercent,
+      loadAverage: Number(Math.max(0.1, base.loadAverage + wave / 20).toFixed(2)),
+    });
+  }
+  return data;
+}

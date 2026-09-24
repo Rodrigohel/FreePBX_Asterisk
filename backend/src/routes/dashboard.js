@@ -4,7 +4,7 @@ import { getExtensions, getExtensionsSummary, getExtensionDetail } from '../serv
 import { getDowntimeReport } from '../services/extensionState.js';
 import { getActiveCalls, getCallsSummary, getTodaySummary, getDaySummary, getPeriodSummary, getExtensionCallsToday, searchCallHistory, exportCallHistory, getMissedCallsToday, getTopUnitsReport, getCallHeatmap } from '../services/callsService.js';
 import { getAlerts, getActiveAlertsCount } from '../services/alertsService.js';
-import { getServerHealth } from '../services/healthService.js';
+import { getServerHealth, getHealthHistory } from '../services/healthService.js';
 import { getFavoriteNumbers, addFavorite, removeFavorite } from '../services/favoritesService.js';
 
 export const dashboardRouter = Router();
@@ -98,6 +98,10 @@ dashboardRouter.get('/extensions/failures/report', (req, res) => {
 dashboardRouter.get('/alerts', async (req, res) => {
   const { data, source } = await getAlerts();
   res.json({ data, source });
+});
+
+dashboardRouter.get('/server/health/history', async (req, res) => {
+  res.json(await getHealthHistory({ hours: req.query.hours }));
 });
 
 dashboardRouter.get('/server/health', async (req, res) => {

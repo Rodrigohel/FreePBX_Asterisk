@@ -11,6 +11,7 @@ import ExtensionsPanel from '../components/ExtensionsPanel.jsx';
 import ActiveCallsPanel from '../components/ActiveCallsPanel.jsx';
 import AlertsPanel from '../components/AlertsPanel.jsx';
 import ServerHealthPanel from '../components/ServerHealthPanel.jsx';
+import ServerHealthTrendPanel from '../components/ServerHealthTrendPanel.jsx';
 import TodaySummaryPanel from '../components/TodaySummaryPanel.jsx';
 import SettingsModal from '../components/SettingsModal.jsx';
 import ExtensionDetailModal from '../components/ExtensionDetailModal.jsx';
@@ -314,26 +315,30 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
           </div>
         </div>
 
-        <div ref={todaySummarySectionRef} style={{ ...reveal(4), scrollMarginTop: 20 }}>
+        <div style={{ ...reveal(4) }}>
+          <ServerHealthTrendPanel colors={colors} />
+        </div>
+
+        <div ref={todaySummarySectionRef} style={{ ...reveal(5), scrollMarginTop: 20 }}>
           <TodaySummaryPanel colors={colors} summary={todaySummary} previousSummary={previousDaySummary} date={summaryDate} onDateChange={setSummaryDate} />
         </div>
 
-        <div style={reveal(5)}>
+        <div style={reveal(6)}>
           <MissedCallsPanel colors={colors} extensions={extensions} />
         </div>
 
-        <div ref={analyticsSectionRef} style={{ ...reveal(6), display: 'flex', flexDirection: 'column', gap: 16, scrollMarginTop: 20 }}>
+        <div ref={analyticsSectionRef} style={{ ...reveal(7), display: 'flex', flexDirection: 'column', gap: 16, scrollMarginTop: 20 }}>
           <TopUnitsPanel colors={colors} extensions={extensions} />
           <CallHeatmapPanel colors={colors} />
           <MonthlyTrendPanel colors={colors} />
           <MonthlyReportPanel colors={colors} settings={settings} extensions={extensions} />
         </div>
 
-        <div style={reveal(7)}>
+        <div style={reveal(8)}>
           <FailuresReportPanel colors={colors} extensions={extensions} />
         </div>
 
-        <div ref={callHistorySectionRef} style={{ ...reveal(8), scrollMarginTop: 20 }}>
+        <div ref={callHistorySectionRef} style={{ ...reveal(9), scrollMarginTop: 20 }}>
           <CallHistoryPanel colors={colors} extensions={extensions} />
         </div>
 
