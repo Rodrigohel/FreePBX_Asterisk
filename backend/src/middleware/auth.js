@@ -10,7 +10,17 @@ export function requireAuth(req, res, next) {
   }
 
   try {
-    req.user = jwt.verify(token, config.auth.jwtSecret);
+    const payload = jwt.verify(token, config.auth.jwtSecret);
+    // O JWT de "totp-pending" (emitido só pra completar a segunda etapa do
+    // login) tem um `purpose` diferente do token de sessão normal — mesmo
+    // que vaze, não pode ser usado aqui como se fosse uma sessão de
+    // verdade, senão alguém que só sabe a senha (sem o código do app
+    // autenticador) conseguiria chamar rotas protegidas, inclusive
+    // /totp/disable, sem nunca provar que tem o segundo fator.
+    if (payload.purpose) {
+      return res.status(401).json({ error: 'Token inválido ou expirado' });
+    }
+    req.user = payload;
     next();
   } catch {
     return res.status(401).json({ error: 'Token inválido ou expirado' });

@@ -185,7 +185,7 @@ function NotificationsTab({
 }
 
 function UsersTab({
-  colors, users, currentUsername, handleDeleteUser, handleAddUser,
+  colors, users, currentUsername, handleDeleteUser, handleAddUser, handleDisableUserTotp,
   newUsername, setNewUsername, newDisplayName, setNewDisplayName, newPassword, setNewPassword,
   newIsAdmin, setNewIsAdmin, userError, addingUser,
 }) {
@@ -196,7 +196,7 @@ function UsersTab({
       {users.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           {users.map((u) => (
-            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${colors.border}`, fontSize: 13 }}>
+            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${colors.border}`, fontSize: 13, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 600, color: colors.textPrimary }}>{u.displayName}</span>
               <span style={{ color: colors.textTertiary, fontSize: 12 }}>@{u.username}</span>
               <span style={{
@@ -206,15 +206,35 @@ function UsersTab({
               }}>
                 {u.role === 'admin' ? 'Admin' : 'Usuário'}
               </span>
-              {u.username !== currentUsername && (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteUser(u.id)}
-                  style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Remover
-                </button>
+              {u.totpEnabled && (
+                <span style={{
+                  display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: 0.3, padding: '2px 7px', borderRadius: 99, color: colors.green, background: colors.greenSoft,
+                }}>
+                  <Icon paths={ICONS.shield} size={10} strokeWidth={2.4} />
+                  2FA
+                </span>
               )}
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+                {u.totpEnabled && u.username !== currentUsername && (
+                  <button
+                    type="button"
+                    onClick={() => handleDisableUserTotp(u.id, u.username)}
+                    style={{ border: 'none', background: 'transparent', color: colors.textSecondary, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Desativar 2FA
+                  </button>
+                )}
+                {u.username !== currentUsername && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteUser(u.id)}
+                    style={{ border: 'none', background: 'transparent', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Remover
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -500,6 +520,21 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
     }
   }
 
+  // Escape hatch pro admin: desativa o 2FA de outro usuário que ficou sem
+  // acesso ao app autenticador e aos códigos de recuperação. Nunca pede o
+  // código dele — só confirma a intenção, já que quem está fazendo isso é
+  // quem tem poder de administrador no painel.
+  async function handleDisableUserTotp(id, username) {
+    setUserError('');
+    if (!window.confirm(`Desativar a verificação em duas etapas de @${username}?`)) return;
+    try {
+      await api.disableUserTotp(id);
+      loadUsers();
+    } catch (err) {
+      setUserError(err.message || 'Não foi possível desativar o 2FA desse usuário.');
+    }
+  }
+
   const showSaveBar = tab === 'general' || tab === 'alerts' || tab === 'notifications';
 
   return (
@@ -583,6 +618,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
             {tab === 'users' && (
               <UsersTab
                 colors={colors} users={users} currentUsername={currentUsername} handleDeleteUser={handleDeleteUser}
+                handleDisableUserTotp={handleDisableUserTotp}
                 handleAddUser={handleAddUser} newUsername={newUsername} setNewUsername={setNewUsername}
                 newDisplayName={newDisplayName} setNewDisplayName={setNewDisplayName}
                 newPassword={newPassword} setNewPassword={setNewPassword}

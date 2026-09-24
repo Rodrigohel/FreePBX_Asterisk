@@ -1,29 +1,49 @@
 import { useState } from 'react';
 import Logo from './Logo.jsx';
 
-export default function LoginModal({ colors, onLogin, onClose, logoUrl }) {
+export default function LoginModal({ colors, onLogin, onLoginTotp, onClose, logoUrl }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [totpCode, setTotpCode] = useState('');
-  const [needsTotp, setNeedsTotp] = useState(false);
+  const [code, setCode] = useState('');
+  const [totpToken, setTotpToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e) {
+  const needsTotp = !!totpToken;
+
+  function backToCredentials() {
+    setTotpToken('');
+    setCode('');
+    setError('');
+  }
+
+  async function handleCredentialsSubmit(e) {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await onLogin(username, password, needsTotp ? totpCode : undefined);
-    } catch (err) {
-      if (err.requiresTotp) {
-        setNeedsTotp(true);
-        // Só mostra erro se já tinha tentado um código (código errado) —
-        // na primeira vez que o campo aparece não é bem um "erro".
-        if (needsTotp) setError(err.message || 'Código inválido.');
+      const result = await onLogin(username, password);
+      if (result?.requiresTotp) {
+        setTotpToken(result.totpToken);
       } else {
-        setError(err.message || 'Não foi possível entrar.');
+        onClose();
       }
+    } catch (err) {
+      setError(err.message || 'Não foi possível entrar.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleTotpSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await onLoginTotp(totpToken, code);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Código inválido.');
     } finally {
       setLoading(false);
     }
@@ -39,7 +59,7 @@ export default function LoginModal({ colors, onLogin, onClose, logoUrl }) {
     >
       <form
         onClick={(e) => e.stopPropagation()}
-        onSubmit={handleSubmit}
+        onSubmit={needsTotp ? handleTotpSubmit : handleCredentialsSubmit}
         style={{ width: '100%', maxWidth: 360, background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 16, padding: '28px 26px', boxShadow: colors.shadow, position: 'relative' }}
       >
         <button
@@ -58,7 +78,7 @@ export default function LoginModal({ colors, onLogin, onClose, logoUrl }) {
               {needsTotp ? 'Verificação em duas etapas' : 'Entrar'}
             </div>
             <div style={{ fontSize: 12.5, color: colors.textSecondary }}>
-              {needsTotp ? 'Digite o código do seu app autenticador' : 'Acesse o painel completo'}
+              {needsTotp ? 'Código do app autenticador ou de recuperação' : 'Acesse o painel completo'}
             </div>
           </div>
         </div>
@@ -85,18 +105,17 @@ export default function LoginModal({ colors, onLogin, onClose, logoUrl }) {
 
         {needsTotp && (
           <>
-            <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: colors.textSecondary, marginBottom: 6 }}>Código de 6 dígitos</label>
+            <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: colors.textSecondary, marginBottom: 6 }}>Código</label>
             <input
-              value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              inputMode="numeric"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
               autoFocus
-              placeholder="000000"
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${colors.border}`, marginBottom: 8, fontSize: 20, letterSpacing: 4, textAlign: 'center', fontFamily: "'Space Grotesk',sans-serif" }}
+              placeholder="000000 ou código de recuperação"
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${colors.border}`, marginBottom: 8, fontSize: 18, letterSpacing: 2, textAlign: 'center', fontFamily: "'Space Grotesk',sans-serif" }}
             />
             <button
               type="button"
-              onClick={() => { setNeedsTotp(false); setTotpCode(''); setError(''); }}
+              onClick={backToCredentials}
               style={{ border: 'none', background: 'transparent', color: colors.textTertiary, fontSize: 12, cursor: 'pointer', marginBottom: 18, padding: 0 }}
             >
               ← Voltar

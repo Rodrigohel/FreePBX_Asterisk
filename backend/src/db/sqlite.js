@@ -108,3 +108,6 @@ if (!usersColumns.includes('totp_secret')) {
 if (!usersColumns.includes('totp_enabled')) {
   db.exec('ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0');
 }
+if (!usersColumns.includes('totp_recovery_codes')) {
+  db.exec('ALTER TABLE users ADD COLUMN totp_recovery_codes TEXT');
+}

@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "seed:user": "node src/db/seedUser.js"
+    "seed:user": "node src/db/seedUser.js",
+    "reset:totp": "node src/db/resetTotp.js"
   },
   "dependencies": {
     "asterisk-manager": "^0.2.0",
@@ -19,8 +20,6 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.4.0",
     "mysql2": "^3.11.0",
-    "otplib": "^12.0.1",
-    "qrcode": "^1.5.4",
     "systeminformation": "^5.23.5",
     "ws": "^8.18.0"
   },
