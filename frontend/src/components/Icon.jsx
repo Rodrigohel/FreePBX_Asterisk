@@ -46,4 +46,5 @@ export const ICONS = {
   chevronDown: ['M6 9l6 6 6-6'],
   menu: ['M4 6h16', 'M4 12h16', 'M4 18h16'],
   close: ['M18 6 6 18', 'M6 6l12 12'],
+  user: ['M20 21a8 8 0 0 0-16 0', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'],
 };

@@ -51,7 +51,7 @@ function GhostIconButton({ h, onClick, title, children }) {
 
 export default function Sidebar({
   colors, companyName, pbxName, logoUrl, statusPill, navItems,
-  isDark, onToggleTheme, user, onLogout, onOpenSettings, open, onClose,
+  isDark, onToggleTheme, user, onLogout, onOpenSettings, onOpenAccount, open, onClose,
 }) {
   const h = colors.header;
   const [logoutHover, setLogoutHover] = useState(false);
@@ -114,6 +114,11 @@ export default function Sidebar({
           {onOpenSettings && (
             <GhostIconButton h={h} onClick={onOpenSettings} title="Configurações">
               <Icon paths={ICONS.settings} size={15} strokeWidth={2} />
+            </GhostIconButton>
+          )}
+          {onOpenAccount && (
+            <GhostIconButton h={h} onClick={onOpenAccount} title="Minha conta">
+              <Icon paths={ICONS.user} size={15} strokeWidth={2} />
             </GhostIconButton>
           )}
         </div>

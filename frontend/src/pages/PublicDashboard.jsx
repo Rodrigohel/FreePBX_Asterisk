@@ -90,8 +90,8 @@ export default function PublicDashboard({ onLogin, settings }) {
     try { await load(range); } finally { setTimeout(() => setRefreshing(false), 400); }
   }, [load, range]);
 
-  async function handleLogin(username, password) {
-    await onLogin(username, password);
+  async function handleLogin(username, password, totpCode) {
+    await onLogin(username, password, totpCode);
     setShowLogin(false);
   }
 

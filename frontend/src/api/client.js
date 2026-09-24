@@ -23,16 +23,19 @@ async function request(path, options = {}) {
     },
   });
 
-  if (res.status === 401) {
-    setToken(null);
-    const err = new Error('Não autenticado');
-    err.status = 401;
-    throw err;
-  }
-
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Erro ${res.status}`);
+    // Um 401 na própria rota de login significa "senha/código errado" (o
+    // usuário nem tem token ainda) — bem diferente de um 401 numa rota
+    // protegida, que significa "sua sessão expirou", e aí sim precisa
+    // limpar o token guardado.
+    if (res.status === 401 && path !== '/api/auth/login') {
+      setToken(null);
+    }
+    const err = new Error(body.error || `Erro ${res.status}`);
+    err.status = res.status;
+    if (body.requiresTotp) err.requiresTotp = true;
+    throw err;
   }
 
   return res.json();
@@ -44,9 +47,12 @@ export function resolveAssetUrl(path) {
 }
 
 export const api = {
-  login: (username, password) =>
-    request('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  login: (username, password, totpCode) =>
+    request('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password, totpCode }) }),
   me: () => request('/api/auth/me'),
+  setup2FA: () => request('/api/auth/2fa/setup', { method: 'POST' }),
+  confirm2FA: (code) => request('/api/auth/2fa/confirm', { method: 'POST', body: JSON.stringify({ code }) }),
+  disable2FA: (password) => request('/api/auth/2fa/disable', { method: 'POST', body: JSON.stringify({ password }) }),
   status: () => request('/api/status'),
   extensions: () => request('/api/extensions'),
   extensionsSummary: () => request('/api/extensions/summary'),
