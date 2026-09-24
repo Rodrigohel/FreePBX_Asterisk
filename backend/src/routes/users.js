@@ -2,7 +2,6 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../db/sqlite.js';
 import { logAction } from '../services/auditService.js';
-import { resetTotp } from '../services/totpAccountService.js';
 
 export const usersRouter = Router();
 
@@ -69,21 +68,17 @@ usersRouter.delete('/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// Escape hatch pro admin: desativa o 2FA de OUTRO usuário que ficou sem
+// Escape hatch pro admin: desativa o 2FA de outro usuário que ficou sem
 // acesso ao app autenticador e aos códigos de recuperação. Nunca pede o
 // código dele — é exatamente pra quando ele não tem mais como gerar um.
 // Nunca existe o inverso (admin ativar 2FA em nome de alguém): isso só o
-// próprio dono faz, em /api/auth/totp/enable.
+// próprio dono faz, em POST /api/auth/totp/enable.
 usersRouter.post('/:id/totp-disable', (req, res) => {
-  const id = Number(req.params.id);
-  if (id === req.user.sub) {
-    return res.status(400).json({ error: 'Use a tela de "Minha conta" pra desativar o seu próprio 2FA.' });
-  }
-  const target = findByIdStmt.get(id);
+  const target = findByIdStmt.get(req.params.id);
   if (!target) return res.status(404).json({ error: 'Usuário não encontrado.' });
-  if (!target.totp_enabled) return res.status(400).json({ error: 'Esse usuário não tem a verificação em duas etapas ativada.' });
+  if (!target.totp_enabled) return res.status(400).json({ error: 'A verificação em duas etapas não está ativada para esse usuário.' });
 
-  resetTotp(id);
+  db.prepare("UPDATE users SET totp_secret = '', totp_enabled = 0, totp_recovery_codes = '[]' WHERE id = ?").run(req.params.id);
   logAction(req.user.username, '2fa.disabled', `desativou a verificação em duas etapas de @${target.username} (admin)`);
   res.json({ ok: true });
 });

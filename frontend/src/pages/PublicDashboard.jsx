@@ -53,7 +53,7 @@ function buildPublicCards(colors, payload) {
   return cards;
 }
 
-export default function PublicDashboard({ onLogin, onLoginTotp, settings }) {
+export default function PublicDashboard({ onLogin, onCompleteTotp, settings }) {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
   const [range, setRange] = useState('today');
   const [refreshing, setRefreshing] = useState(false);
@@ -90,12 +90,20 @@ export default function PublicDashboard({ onLogin, onLoginTotp, settings }) {
     try { await load(range); } finally { setTimeout(() => setRefreshing(false), 400); }
   }, [load, range]);
 
+  async function handleLogin(username, password) {
+    const result = await onLogin(username, password);
+    // Com 2FA pendente (result.requiresTotp), o modal continua aberto pra
+    // pedir o código — só fecha quando o login realmente termina.
+    if (!result?.requiresTotp) setShowLogin(false);
+    return result;
+  }
+
   if (loadError && !payload) {
     return (
       <div style={{ minHeight: '100vh', background: colors.bgPage, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textSecondary, fontFamily: "'Manrope',sans-serif", flexDirection: 'column', gap: 12 }}>
         <div>Não foi possível carregar o painel público.</div>
         <button onClick={() => setShowLogin(true)} style={{ border: 'none', background: colors.primary, color: '#fff', borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Entrar</button>
-        {showLogin && <LoginModal colors={colors} onLogin={onLogin} onLoginTotp={onLoginTotp} onClose={() => setShowLogin(false)} logoUrl={settings.logoUrl} />}
+        {showLogin && <LoginModal colors={colors} onLogin={handleLogin} onCompleteTotp={onCompleteTotp} onClose={() => setShowLogin(false)} logoUrl={settings.logoUrl} />}
       </div>
     );
   }
@@ -157,7 +165,7 @@ export default function PublicDashboard({ onLogin, onLoginTotp, settings }) {
 
       </div>
 
-      {showLogin && <LoginModal colors={colors} onLogin={onLogin} onLoginTotp={onLoginTotp} onClose={() => setShowLogin(false)} logoUrl={settings.logoUrl} />}
+      {showLogin && <LoginModal colors={colors} onLogin={handleLogin} onCompleteTotp={onCompleteTotp} onClose={() => setShowLogin(false)} logoUrl={settings.logoUrl} />}
     </div>
   );
 }

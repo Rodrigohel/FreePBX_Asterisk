@@ -23,19 +23,16 @@ async function request(path, options = {}) {
     },
   });
 
+  if (res.status === 401) {
+    setToken(null);
+    const err = new Error('Não autenticado');
+    err.status = 401;
+    throw err;
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    // Um 401 nas rotas de login (usuário/senha ou código do 2FA) significa
-    // "credenciais erradas" (o usuário nem tem uma sessão ainda) — bem
-    // diferente de um 401 numa rota protegida, que significa "sua sessão
-    // expirou", e aí sim precisa limpar o token guardado.
-    const isLoginRoute = path === '/api/auth/login' || path === '/api/auth/login/totp';
-    if (res.status === 401 && !isLoginRoute) {
-      setToken(null);
-    }
-    const err = new Error(body.error || `Erro ${res.status}`);
-    err.status = res.status;
-    throw err;
+    throw new Error(body.error || `Erro ${res.status}`);
   }
 
   return res.json();
@@ -52,10 +49,10 @@ export const api = {
   loginTotp: (totpToken, code) =>
     request('/api/auth/login/totp', { method: 'POST', body: JSON.stringify({ totpToken, code }) }),
   me: () => request('/api/auth/me'),
-  setupTotp: () => request('/api/auth/totp/setup', { method: 'POST' }),
-  enableTotp: (secret, code) => request('/api/auth/totp/enable', { method: 'POST', body: JSON.stringify({ secret, code }) }),
-  disableTotp: (code) => request('/api/auth/totp/disable', { method: 'POST', body: JSON.stringify({ code }) }),
-  disableUserTotp: (id) => request(`/api/users/${encodeURIComponent(id)}/totp-disable`, { method: 'POST' }),
+  totpSetup: () => request('/api/auth/totp/setup', { method: 'POST' }),
+  totpEnable: (secret, code) => request('/api/auth/totp/enable', { method: 'POST', body: JSON.stringify({ secret, code }) }),
+  totpDisable: (code) => request('/api/auth/totp/disable', { method: 'POST', body: JSON.stringify({ code }) }),
+  adminDisableTotp: (id) => request(`/api/users/${encodeURIComponent(id)}/totp-disable`, { method: 'POST' }),
   status: () => request('/api/status'),
   extensions: () => request('/api/extensions'),
   extensionsSummary: () => request('/api/extensions/summary'),
