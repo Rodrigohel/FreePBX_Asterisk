@@ -12,6 +12,7 @@ const sectionTitleStyle = (colors) => ({ fontSize: 12.5, fontWeight: 700, color:
 
 const AUDIT_ACTION_LABELS = {
   'auth.login': 'Fez login',
+  'auth.lockout': 'Conta bloqueada temporariamente (muitas tentativas erradas)',
   'settings.update': 'Atualizou configurações',
   'settings.logo_upload': 'Trocou o logo',
   'user.create': 'Criou usuário',
