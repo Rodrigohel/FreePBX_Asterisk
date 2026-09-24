@@ -71,6 +71,18 @@ db.exec(`
     at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_audit_log_at ON audit_log(at DESC);
+
+  -- Amostras periódicas de CPU/memória/disco, pra mostrar tendência ao
+  -- longo do tempo em vez de só o valor atual.
+  CREATE TABLE IF NOT EXISTS server_health_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at TEXT NOT NULL,
+    cpu_percent INTEGER NOT NULL,
+    memory_percent INTEGER NOT NULL,
+    disk_percent INTEGER NOT NULL,
+    load_average REAL NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_server_health_history_at ON server_health_history(at DESC);
 `);
 
 // Migração leve: `CREATE TABLE IF NOT EXISTS` acima não adiciona colunas

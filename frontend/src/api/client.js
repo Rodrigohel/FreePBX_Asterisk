@@ -81,6 +81,10 @@ export const api = {
   },
   alerts: () => request('/api/alerts'),
   serverHealth: () => request('/api/server/health'),
+  serverHealthHistory: (params = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
+    return request(`/api/server/health/history?${qs.toString()}`);
+  },
   publicDashboard: (range) => request(`/api/public/dashboard${range ? `?range=${range}` : ''}`),
   publicSettings: () => request('/api/public/settings'),
   settings: () => request('/api/settings'),

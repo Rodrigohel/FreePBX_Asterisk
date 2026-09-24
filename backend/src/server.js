@@ -14,6 +14,7 @@ import { requireAuth, requireAdmin } from './middleware/auth.js';
 import { runAlertChecks } from './services/alertsService.js';
 import { scheduleDailyBackup } from './services/backupService.js';
 import { scheduleDailyDigest } from './services/digestService.js';
+import { scheduleHealthSampling } from './services/healthService.js';
 import { getActiveCalls } from './services/callsService.js';
 import { getExtensions } from './services/extensionsService.js';
 import './db/sqlite.js';
@@ -112,6 +113,11 @@ scheduleDailyBackup();
 // por padrão — só manda alguma coisa se ligado em Configurações e com
 // token/chat_id do Telegram preenchidos.
 scheduleDailyDigest();
+
+// Amostra CPU/memória/disco a cada 5min pro gráfico de tendência de saúde
+// do servidor. Não grava nada em modo mock (getServerHealth() já cai em
+// mock ali dentro).
+scheduleHealthSampling();
 
 server.listen(config.port, () => {
   console.log(`[dashboard-backend] ouvindo em http://localhost:${config.port} (mock=${config.forceMock})`);
