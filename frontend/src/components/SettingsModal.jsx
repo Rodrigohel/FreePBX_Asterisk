@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client.js';
 import Icon, { ICONS } from './Icon.jsx';
 import Logo from './Logo.jsx';
+import { toCsv, downloadCsv } from '../utils/csv.js';
 
 const inputStyle = (colors) => ({
   width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${colors.border}`,
@@ -260,15 +261,86 @@ function UsersTab({
   );
 }
 
-function AuditTab({ colors, auditLog }) {
+function AuditTab({ colors }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState('');
+  const [action, setAction] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+
+  function search() {
+    setLoading(true);
+    api.auditLog({ limit: 100, q, action, from, to })
+      .then((res) => setEntries(res.data))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { search(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    search();
+  }
+
+  function handleExportCsv() {
+    const rows = entries.map((entry) => [formatAuditDate(entry.at), entry.actorUsername, auditActionLabel(entry.action), entry.details || '']);
+    const csv = toCsv(['Data/Hora', 'Usuário', 'Ação', 'Detalhes'], rows);
+    downloadCsv('log_auditoria.csv', csv);
+  }
+
   return (
     <>
       <div style={sectionTitleStyle(colors)}>Log de auditoria</div>
-      {auditLog.length === 0 ? (
-        <div style={{ fontSize: 12.5, color: colors.textTertiary }}>Nenhuma ação registrada ainda.</div>
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar por usuário, ação ou detalhe..."
+          style={{ ...inputStyle(colors), flex: '1 1 180px', marginBottom: 0 }}
+        />
+        <select
+          value={action}
+          onChange={(e) => setAction(e.target.value)}
+          style={{ ...inputStyle(colors), flex: '1 1 140px', marginBottom: 0 }}
+        >
+          <option value="">Todas as ações</option>
+          {Object.entries(AUDIT_ACTION_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
+        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ ...inputStyle(colors), marginBottom: 0 }} />
+        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ ...inputStyle(colors), marginBottom: 0 }} />
+        <button
+          type="submit"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: colors.primary, color: '#fff', borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+        >
+          <Icon paths={ICONS.search} size={14} strokeWidth={2.2} />
+          Buscar
+        </button>
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          disabled={entries.length === 0}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', border: `1px solid ${colors.border}`,
+            background: colors.bgCardAlt, color: colors.textPrimary, borderRadius: 10, padding: '8px 14px', fontSize: 12.5, fontWeight: 600,
+            cursor: entries.length === 0 ? 'default' : 'pointer', opacity: entries.length === 0 ? 0.5 : 1,
+          }}
+        >
+          <Icon paths={ICONS.chevronDown} size={13} strokeWidth={2.2} />
+          Exportar CSV
+        </button>
+      </form>
+
+      {loading ? (
+        <div style={{ fontSize: 12.5, color: colors.textTertiary, textAlign: 'center', padding: '12px 0' }}>Buscando...</div>
+      ) : entries.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: colors.textTertiary }}>Nenhuma ação encontrada.</div>
       ) : (
         <div>
-          {auditLog.map((entry) => (
+          {entries.map((entry) => (
             <div key={entry.id} style={{ padding: '7px 0', borderBottom: `1px solid ${colors.border}`, fontSize: 12.5 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{ color: colors.textPrimary }}>
@@ -308,7 +380,6 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
   const [telegramTestError, setTelegramTestError] = useState('');
   const fileInputRef = useRef(null);
 
-  const [auditLog, setAuditLog] = useState([]);
   const [users, setUsers] = useState([]);
   const [newUsername, setNewUsername] = useState('');
   const [newDisplayName, setNewDisplayName] = useState('');
@@ -332,7 +403,6 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
       setDailyDigestHour(String(full.dailyDigestHour ?? '8'));
     }).catch(() => {});
     loadUsers();
-    api.auditLog({ limit: 20 }).then((res) => setAuditLog(res.data)).catch(() => {});
   }, []);
 
   function loadUsers() {
@@ -517,7 +587,7 @@ export default function SettingsModal({ colors, settings, onClose, onSaved, curr
                 newIsAdmin={newIsAdmin} setNewIsAdmin={setNewIsAdmin} userError={userError} addingUser={addingUser}
               />
             )}
-            {tab === 'audit' && <AuditTab colors={colors} auditLog={auditLog} />}
+            {tab === 'audit' && <AuditTab colors={colors} />}
 
             {showSaveBar && (
               <>

@@ -141,5 +141,6 @@ settingsRouter.post('/logo', (req, res) => {
 });
 
 settingsRouter.get('/audit-log', (req, res) => {
-  res.json({ data: getAuditLog({ limit: req.query.limit }) });
+  const { limit, q, action, from, to } = req.query;
+  res.json({ data: getAuditLog({ limit, q, action, from, to }) });
 });
