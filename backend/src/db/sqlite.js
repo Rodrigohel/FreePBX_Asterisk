@@ -102,3 +102,9 @@ const usersColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.n
 if (!usersColumns.includes('role')) {
   db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'");
 }
+if (!usersColumns.includes('totp_secret')) {
+  db.exec('ALTER TABLE users ADD COLUMN totp_secret TEXT');
+}
+if (!usersColumns.includes('totp_enabled')) {
+  db.exec('ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0');
+}
