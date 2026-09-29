@@ -20,18 +20,18 @@ function JailSection({ colors, jail, onUnban, busyKey }) {
       {jail.ips.length === 0 ? (
         <div style={{ fontSize: 12.5, color: colors.textTertiary }}>Nenhum IP banido nesse jail agora.</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {jail.ips.map((ip) => {
             const key = `${jail.jail}:${ip}`;
             return (
-              <div key={ip} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 9, background: colors.bgCardAlt, border: `1px solid ${colors.border}` }}>
-                <Icon paths={ICONS.offline} size={14} color={colors.red} strokeWidth={2.2} />
-                <span style={{ fontFamily: 'monospace', fontSize: 12.5, color: colors.textPrimary, flex: 1, minWidth: 0 }}>{ip}</span>
+              <div key={ip} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 10px', borderRadius: 9, background: colors.bgCardAlt, border: `1px solid ${colors.border}`, flex: '0 0 auto' }}>
+                <Icon paths={ICONS.offline} size={13} color={colors.red} strokeWidth={2.2} />
+                <span style={{ fontFamily: 'monospace', fontSize: 12.5, color: colors.textPrimary, whiteSpace: 'nowrap' }}>{ip}</span>
                 <button
                   type="button"
                   onClick={() => onUnban(jail.jail, ip)}
                   disabled={busyKey === key}
-                  style={{ border: 'none', background: 'transparent', color: colors.primary, fontSize: 12, fontWeight: 700, cursor: busyKey === key ? 'default' : 'pointer', opacity: busyKey === key ? 0.5 : 1 }}
+                  style={{ border: 'none', background: 'transparent', color: colors.primary, fontSize: 12, fontWeight: 700, cursor: busyKey === key ? 'default' : 'pointer', opacity: busyKey === key ? 0.5 : 1, whiteSpace: 'nowrap' }}
                 >
                   {busyKey === key ? 'Desbanindo...' : 'Desbanir'}
                 </button>
@@ -123,15 +123,17 @@ export default function BlockedIpsPanel({ colors }) {
           ) : firewall.rules.length === 0 ? (
             <div style={{ fontSize: 12.5, color: colors.textTertiary }}>Nenhuma regra manual de bloqueio encontrada.</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {firewall.rules.map((rule) => (
-                <div key={rule.raw} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 9, background: colors.bgCardAlt, border: `1px solid ${colors.border}` }}>
-                  <Icon paths={ICONS.offline} size={14} color={colors.textTertiary} strokeWidth={2.2} />
-                  <span style={{ fontFamily: 'monospace', fontSize: 12.5, color: colors.textPrimary, flex: 1, minWidth: 0 }}>{rule.ip}</span>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: colors.textTertiary }}>{rule.target}</span>
-                </div>
-              ))}
-              <div style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>
+            <div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {firewall.rules.map((rule) => (
+                  <div key={rule.raw} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 9, background: colors.bgCardAlt, border: `1px solid ${colors.border}`, flex: '0 0 auto' }}>
+                    <Icon paths={ICONS.offline} size={13} color={colors.textTertiary} strokeWidth={2.2} />
+                    <span style={{ fontFamily: 'monospace', fontSize: 12.5, color: colors.textPrimary, whiteSpace: 'nowrap' }}>{rule.ip}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: colors.textTertiary }}>{rule.target}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: colors.textTertiary, marginTop: 8 }}>
                 Regras manuais só são listadas aqui — remova ou ajuste direto no servidor.
               </div>
             </div>
