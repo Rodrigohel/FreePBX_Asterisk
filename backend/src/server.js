@@ -10,6 +10,7 @@ import { dashboardRouter } from './routes/dashboard.js';
 import { publicRouter } from './routes/public.js';
 import { settingsRouter } from './routes/settings.js';
 import { usersRouter } from './routes/users.js';
+import { securityRouter } from './routes/security.js';
 import { requireAuth, requireAdmin } from './middleware/auth.js';
 import { runAlertChecks } from './services/alertsService.js';
 import { scheduleDailyBackup } from './services/backupService.js';
@@ -38,6 +39,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
 app.use('/api/settings', requireAuth, requireAdmin, settingsRouter);
 app.use('/api/users', requireAuth, requireAdmin, usersRouter);
+app.use('/api/security', requireAuth, requireAdmin, securityRouter);
 app.use('/api', requireAuth, dashboardRouter);
 
 const server = http.createServer(app);

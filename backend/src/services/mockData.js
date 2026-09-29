@@ -164,3 +164,28 @@ export function mockHealthHistory(hours) {
   }
   return data;
 }
+
+// Estado mutável (ao contrário dos outros mocks, que são todos puros) pra
+// dar pra testar o botão "Desbanir" em modo demonstração sem um fail2ban de
+// verdade — cada chamada de unbanFail2ban() tira o IP da lista em memória.
+let mockFail2banJails = [
+  { jail: 'sshd', bannedCount: 2, ips: ['203.0.113.5', '198.51.100.9'] },
+  { jail: 'asterisk-auth', bannedCount: 1, ips: ['203.0.113.77'] },
+];
+
+export function mockBlockedIps() {
+  return {
+    fail2ban: { available: true, jails: mockFail2banJails },
+    firewall: {
+      available: true,
+      rules: [
+        { ip: '192.0.2.44', target: 'DROP', raw: '-A INPUT -s 192.0.2.44/32 -j DROP' },
+      ],
+    },
+    unbanFail2ban(jail, ip) {
+      mockFail2banJails = mockFail2banJails.map((j) => (
+        j.jail === jail ? { ...j, ips: j.ips.filter((i) => i !== ip), bannedCount: Math.max(0, j.bannedCount - 1) } : j
+      ));
+    },
+  };
+}

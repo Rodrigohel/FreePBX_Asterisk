@@ -12,6 +12,7 @@ import ActiveCallsPanel from '../components/ActiveCallsPanel.jsx';
 import AlertsPanel from '../components/AlertsPanel.jsx';
 import ServerHealthPanel from '../components/ServerHealthPanel.jsx';
 import ServerHealthTrendPanel from '../components/ServerHealthTrendPanel.jsx';
+import BlockedIpsPanel from '../components/BlockedIpsPanel.jsx';
 import TodaySummaryPanel from '../components/TodaySummaryPanel.jsx';
 import SettingsModal from '../components/SettingsModal.jsx';
 import ExtensionDetailModal from '../components/ExtensionDetailModal.jsx';
@@ -80,6 +81,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
   const activeCallsSectionRef = useRef(null);
   const alertsSectionRef = useRef(null);
   const healthSectionRef = useRef(null);
+  const securitySectionRef = useRef(null);
   const todaySummarySectionRef = useRef(null);
   const analyticsSectionRef = useRef(null);
   const callHistorySectionRef = useRef(null);
@@ -203,6 +205,7 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
     { key: 'summary', label: 'Resumo do dia', icon: ICONS.calendar, onClick: () => scrollToSection(todaySummarySectionRef) },
     { key: 'analytics', label: 'Análises', icon: ICONS.extensionsIcon, onClick: () => scrollToSection(analyticsSectionRef) },
     { key: 'history', label: 'Histórico', icon: ICONS.clock, onClick: () => scrollToSection(callHistorySectionRef) },
+    ...(user?.role === 'admin' ? [{ key: 'security', label: 'Segurança', icon: ICONS.shield, onClick: () => scrollToSection(securitySectionRef) }] : []),
   ];
 
   return (
@@ -318,6 +321,12 @@ export default function Dashboard({ user, onLogout, settings, reloadSettings }) 
         <div style={{ ...reveal(4) }}>
           <ServerHealthTrendPanel colors={colors} />
         </div>
+
+        {user?.role === 'admin' && (
+          <div ref={securitySectionRef} style={{ ...reveal(4), scrollMarginTop: 20 }}>
+            <BlockedIpsPanel colors={colors} />
+          </div>
+        )}
 
         <div ref={todaySummarySectionRef} style={{ ...reveal(5), scrollMarginTop: 20 }}>
           <TodaySummaryPanel colors={colors} summary={todaySummary} previousSummary={previousDaySummary} date={summaryDate} onDateChange={setSummaryDate} />

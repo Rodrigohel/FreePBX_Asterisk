@@ -21,6 +21,7 @@ const AUDIT_ACTION_LABELS = {
   'settings.logo_upload': 'Trocou o logo',
   'user.create': 'Criou usuário',
   'user.delete': 'Removeu usuário',
+  'firewall.unban': 'Desbaniu um IP (fail2ban)',
 };
 
 function auditActionLabel(action) {
