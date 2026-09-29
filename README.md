@@ -374,6 +374,9 @@ O backend sobe em `http://localhost:3001` (padrão) com:
   `/api/calls/active`, `/api/calls/summary?range=today|7d|30d`,
   `/api/calls/today-summary`, `/api/alerts`, `/api/server/health` —
   protegidos por `Authorization: Bearer <token>`.
+- `GET /api/security/blocked-ips`, `POST /api/security/blocked-ips/unban`
+  — só para administradores; IPs banidos pelo fail2ban e regras manuais de
+  firewall (ver seção "Bloqueios de segurança", abaixo).
 - WebSocket em `/ws` — push de `calls:active` e `extensions` a cada 5s,
   para atualização em tempo real sem esperar o polling do frontend.
 
@@ -413,3 +416,41 @@ O primeiro usuário do painel é criado com `npm run seed:user` (pede
 usuário, nome de exibição e senha). Rode novamente para criar mais usuários
 ou redefinir a senha/nome de um já existente. As senhas são armazenadas com
 hash bcrypt em SQLite (`backend/data/dashboard.db`, criado automaticamente).
+
+## Bloqueios de segurança (fail2ban / firewall)
+
+A aba **Segurança** do dashboard (só para administradores) mostra os IPs
+banidos pelo fail2ban (por jail, com botão pra desbanir) e as regras
+manuais de bloqueio no iptables/ufw (só leitura). Isso exige que o processo
+do backend rode alguns comandos como root — sem a permissão configurada
+abaixo, o painel mostra "Não disponível" com o motivo, em vez de quebrar.
+
+Descubra o caminho exato dos binários no seu servidor (varia entre
+distros):
+
+```bash
+which fail2ban-client iptables
+```
+
+Crie a regra de sudo, **restrita só a esses comandos específicos**
+(nunca dê sudo genérico pro usuário do backend). Troque `asterisk` pelo
+usuário configurado no `.service` do systemd (seção 6, acima) se for
+diferente, e ajuste os caminhos se `which` mostrou algo diferente:
+
+```bash
+sudo visudo -f /etc/sudoers.d/pbx-dashboard-firewall
+```
+
+```
+asterisk ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status, /usr/bin/fail2ban-client status *, /usr/bin/fail2ban-client set * unbanip *, /usr/sbin/iptables -S INPUT
+```
+
+Teste como o próprio usuário do backend antes de confiar no painel:
+
+```bash
+sudo -u asterisk sudo fail2ban-client status
+```
+
+Sem fail2ban instalado, ou sem essa regra de sudo, a seção correspondente
+do painel simplesmente aparece como indisponível — o resto do dashboard
+continua funcionando normalmente.
